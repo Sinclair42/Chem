@@ -1,0 +1,1778 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>물의 표면장력과 분자 간 힘 시뮬레이션</title>
+  <style>
+    :root {
+      --bg: #eff8ff;
+      --panel: rgba(255, 255, 255, 0.88);
+      --panel-solid: #ffffff;
+      --text: #17324d;
+      --muted: #5d7084;
+      --line: rgba(36, 112, 180, 0.18);
+      --blue: #2f8df3;
+      --blue-dark: #1767c6;
+      --cyan: #4ed0ff;
+      --purple: #7b61ff;
+      --red: #ff5b6e;
+      --green: #37c98f;
+      --yellow: #ffcf5c;
+      --shadow: 0 18px 60px rgba(30, 94, 150, 0.18);
+      --radius: 24px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Pretendard", "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% 10%, rgba(89, 192, 255, 0.35), transparent 28%),
+        radial-gradient(circle at 90% 20%, rgba(123, 97, 255, 0.18), transparent 32%),
+        linear-gradient(135deg, #eaf7ff 0%, #f7fbff 52%, #e8f5ff 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .app {
+      width: min(1440px, 100%);
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 20px;
+      align-items: end;
+      margin-bottom: 18px;
+    }
+
+    .title-block {
+      background: rgba(255, 255, 255, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(26px, 4vw, 44px);
+      letter-spacing: -0.04em;
+      line-height: 1.08;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(14px, 1.5vw, 17px);
+      line-height: 1.65;
+    }
+
+    .badge {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      width: fit-content;
+      margin-bottom: 12px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(47, 141, 243, 0.12);
+      color: var(--blue-dark);
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .score-card {
+      min-width: 240px;
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, #ffffff, #eff8ff);
+      padding: 22px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+    }
+
+    .score-label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .score-value {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      font-weight: 900;
+      font-size: 42px;
+      letter-spacing: -0.04em;
+    }
+
+    .score-value span {
+      font-size: 15px;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .bar {
+      height: 12px;
+      background: rgba(23, 50, 77, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 12px;
+    }
+
+    .bar-fill {
+      height: 100%;
+      width: 70%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--cyan), var(--blue), var(--purple));
+      transition: width 0.25s ease;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: 330px 1fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .panel, .stage-wrap, .info-panel {
+      background: var(--panel);
+      border: 1px solid rgba(255, 255, 255, 0.85);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .panel {
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-height: calc(100vh - 170px);
+      overflow: auto;
+    }
+
+    .section {
+      padding: 16px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid var(--line);
+    }
+
+    .section h2 {
+      font-size: 15px;
+      margin: 0 0 12px;
+      letter-spacing: -0.02em;
+    }
+
+    .mode-grid {
+      display: grid;
+      gap: 9px;
+    }
+
+    button {
+      border: 0;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .mode-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      text-align: left;
+      padding: 12px 13px;
+      border-radius: 16px;
+      background: #f4f9ff;
+      color: var(--text);
+      border: 1px solid rgba(47, 141, 243, 0.13);
+      transition: 0.18s ease;
+      font-weight: 800;
+    }
+
+    .mode-btn small {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .mode-btn:hover {
+      transform: translateY(-1px);
+      background: #ecf6ff;
+    }
+
+    .mode-btn.active {
+      color: white;
+      background: linear-gradient(135deg, var(--blue), var(--purple));
+      box-shadow: 0 10px 26px rgba(47, 141, 243, 0.22);
+    }
+
+    .mode-btn.active small {
+      color: rgba(255, 255, 255, 0.78);
+    }
+
+    .icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: rgba(255, 255, 255, 0.74);
+      color: var(--blue-dark);
+      flex: 0 0 auto;
+      font-size: 18px;
+    }
+
+    .mode-btn.active .icon {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+    }
+
+    .control {
+      margin-top: 12px;
+    }
+
+    .control:first-of-type {
+      margin-top: 0;
+    }
+
+    .control label {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 900;
+      margin-bottom: 8px;
+    }
+
+    .control output {
+      color: var(--blue-dark);
+      background: rgba(47, 141, 243, 0.1);
+      padding: 3px 8px;
+      border-radius: 999px;
+      min-width: 42px;
+      text-align: center;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--blue);
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+      font-size: 13px;
+      font-weight: 900;
+      color: var(--muted);
+    }
+
+    .toggle-row input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--blue);
+    }
+
+    .action-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .action {
+      padding: 12px 10px;
+      border-radius: 15px;
+      background: #edf7ff;
+      color: var(--blue-dark);
+      font-weight: 900;
+      border: 1px solid rgba(47, 141, 243, 0.14);
+      transition: 0.18s ease;
+    }
+
+    .action:hover {
+      transform: translateY(-1px);
+      background: #dff1ff;
+    }
+
+    .action.primary {
+      background: linear-gradient(135deg, var(--blue), var(--cyan));
+      color: white;
+      box-shadow: 0 10px 25px rgba(47, 141, 243, 0.22);
+    }
+
+    .stage-col {
+      display: grid;
+      grid-template-rows: minmax(460px, 1fr) auto;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .stage-wrap {
+      padding: 16px;
+      min-height: 540px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      min-height: 500px;
+      display: block;
+      border-radius: 20px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.8) 0%, rgba(235,248,255,0.88) 48%, rgba(218,242,255,0.96) 100%);
+      border: 1px solid rgba(47, 141, 243, 0.16);
+    }
+
+    .canvas-label {
+      position: absolute;
+      top: 32px;
+      left: 34px;
+      padding: 10px 13px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(47, 141, 243, 0.15);
+      box-shadow: 0 8px 24px rgba(23, 50, 77, 0.08);
+      font-size: 13px;
+      font-weight: 900;
+      pointer-events: none;
+    }
+
+    .legend {
+      position: absolute;
+      right: 32px;
+      top: 32px;
+      display: grid;
+      gap: 7px;
+      padding: 12px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(47, 141, 243, 0.15);
+      pointer-events: none;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--blue);
+    }
+
+    .dot.surface { background: var(--cyan); border: 2px solid var(--blue-dark); }
+    .dot.soap { background: var(--yellow); }
+    .dot.clip { background: #8b98a8; border: 2px solid #f7fbff; }
+    .dot.arrow { background: var(--red); border-radius: 3px; height: 4px; }
+
+    .info-panel {
+      padding: 18px;
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 14px;
+    }
+
+    .info-box {
+      padding: 18px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.74);
+      border: 1px solid var(--line);
+    }
+
+    .info-box h3 {
+      margin: 0 0 10px;
+      font-size: 17px;
+      letter-spacing: -0.02em;
+    }
+
+    .info-box p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 14px;
+      word-break: keep-all;
+    }
+
+    .formula {
+      font-size: 14px;
+      line-height: 1.8;
+      color: var(--text);
+    }
+
+    .formula code {
+      display: block;
+      margin-top: 8px;
+      padding: 12px;
+      border-radius: 14px;
+      background: #f2f8ff;
+      color: var(--blue-dark);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space: normal;
+    }
+
+    .hint {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 16px;
+      background: rgba(55, 201, 143, 0.1);
+      color: #15734f;
+      font-size: 13px;
+      font-weight: 800;
+      line-height: 1.55;
+    }
+
+    .mini-stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .mini-stat {
+      padding: 10px;
+      border-radius: 14px;
+      background: #f4f9ff;
+      border: 1px solid rgba(47, 141, 243, 0.12);
+    }
+
+    .mini-stat b {
+      display: block;
+      font-size: 18px;
+      color: var(--blue-dark);
+    }
+
+    .mini-stat span {
+      display: block;
+      margin-top: 2px;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: rgba(47, 141, 243, 0.1);
+      color: var(--blue-dark);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    @media (max-width: 980px) {
+      header {
+        grid-template-columns: 1fr;
+      }
+
+      .score-card {
+        min-width: 0;
+      }
+
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      .panel {
+        max-height: none;
+      }
+
+      .info-panel {
+        grid-template-columns: 1fr;
+      }
+
+      .stage-wrap {
+        min-height: 470px;
+      }
+
+      canvas {
+        min-height: 430px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .app {
+        padding: 12px;
+      }
+
+      .title-block, .score-card, .panel, .stage-wrap, .info-panel {
+        border-radius: 18px;
+      }
+
+      .action-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .legend {
+        display: none;
+      }
+
+      .canvas-label {
+        right: 22px;
+        left: 22px;
+        top: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="title-block">
+        <div class="badge">💧 물의 표면장력 실험실</div>
+        <h1>물방울은 왜 동그래질까?</h1>
+        <p class="subtitle">
+          액체 내부 분자와 표면 분자가 받는 힘을 비교하고, 온도·비누·분자 간 인력이 표면장력에 어떤 영향을 주는지 관찰하는 교육용 시뮬레이션입니다.
+        </p>
+      </div>
+
+      <div class="score-card">
+        <div class="score-label">현재 표면장력 지수</div>
+        <div class="score-value"><b id="surfaceScore">70</b><span>/ 100</span></div>
+        <div class="bar"><div class="bar-fill" id="surfaceBar"></div></div>
+        <div class="mini-stat-grid">
+          <div class="mini-stat">
+            <b id="moleculeCount">64</b>
+            <span>물 분자 수</span>
+          </div>
+          <div class="mini-stat">
+            <b id="stateText">보통</b>
+            <span>표면 상태</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <aside class="panel">
+        <section class="section">
+          <h2>보기 모드</h2>
+          <div class="mode-grid">
+            <button class="mode-btn active" data-mode="force">
+              <span class="icon">↘</span>
+              <span>
+                분자 간 힘 보기
+                <small>표면 분자와 내부 분자의 힘 방향 비교</small>
+              </span>
+            </button>
+            <button class="mode-btn" data-mode="droplet">
+              <span class="icon">💧</span>
+              <span>
+                물방울 형성 보기
+                <small>분자들이 뭉치며 둥근 형태가 되는 과정</small>
+              </span>
+            </button>
+            <button class="mode-btn" data-mode="cup">
+              <span class="icon">🥛</span>
+              <span>
+                컵의 물 넘침 보기
+                <small>표면장력 때문에 물이 볼록하게 버티는 모습</small>
+              </span>
+            </button>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>실험 변수</h2>
+          <div class="control">
+            <label for="attraction">분자 간 인력 <output id="attractionOut">75</output></label>
+            <input id="attraction" type="range" min="0" max="100" value="75" />
+          </div>
+          <div class="control">
+            <label for="temperature">온도 <output id="temperatureOut">25℃</output></label>
+            <input id="temperature" type="range" min="0" max="100" value="25" />
+          </div>
+          <div class="control">
+            <label for="soap">비누 농도 <output id="soapOut">0%</output></label>
+            <input id="soap" type="range" min="0" max="100" value="0" />
+          </div>
+          <div class="control">
+            <label for="gravity">중력 <output id="gravityOut">50</output></label>
+            <input id="gravity" type="range" min="0" max="100" value="50" />
+          </div>
+
+          <label class="toggle-row">
+            <input id="showForces" type="checkbox" checked />
+            힘 화살표 표시
+          </label>
+          <label class="toggle-row">
+            <input id="showTrails" type="checkbox" />
+            물방울 잔상 표시
+          </label>
+        </section>
+
+        <section class="section">
+          <h2>조작</h2>
+          <div class="action-grid">
+            <button class="action primary" id="addDrop">물 한 방울 추가</button>
+            <button class="action" id="addClip">클립 넣기</button>
+            <button class="action" id="addSoap">비누 넣기</button>
+            <button class="action" id="shake">흔들기</button>
+            <button class="action" id="reset">초기화</button>
+          </div>
+          <div class="hint">
+            팁: 컵 모드에서 클립을 넣으면 표면장력이 충분할 때는 물 위에 버티고, 비누를 넣거나 표면장력이 낮아지면 가라앉습니다.
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>관찰 포인트</h2>
+          <p class="formula">
+            표면장력은 간단히 이렇게 계산합니다.
+            <code>표면장력 = 분자 간 인력 - 온도 효과 - 비누 효과</code>
+          </p>
+        </section>
+      </aside>
+
+      <section class="stage-col">
+        <div class="stage-wrap">
+          <canvas id="simCanvas"></canvas>
+          <div class="canvas-label" id="canvasLabel">표면 분자는 위쪽에 물 분자가 거의 없어 아래와 옆으로만 끌립니다.</div>
+          <div class="legend">
+            <div class="legend-row"><span class="dot"></span> 내부 물 분자</div>
+            <div class="legend-row"><span class="dot surface"></span> 표면 물 분자</div>
+            <div class="legend-row"><span class="dot arrow"></span> 분자 간 힘</div>
+            <div class="legend-row"><span class="dot soap"></span> 비누 분자</div>
+            <div class="legend-row"><span class="dot clip"></span> 클립</div>
+          </div>
+        </div>
+
+        <div class="info-panel">
+          <div class="info-box">
+            <h3 id="infoTitle">핵심 설명</h3>
+            <p id="infoText">
+              액체 내부의 분자는 모든 방향에서 주변 분자에게 끌려 힘이 대체로 상쇄됩니다.
+              하지만 표면의 분자는 위쪽에 물 분자가 거의 없기 때문에 옆과 아래 방향으로 더 크게 끌립니다.
+              그래서 물은 표면적을 줄이려 하고, 이 성질을 표면장력이라고 합니다.
+            </p>
+          </div>
+          <div class="info-box">
+            <h3>현재 실험 상태</h3>
+            <p id="statusText">
+              표면장력이 충분해 물 분자들이 비교적 잘 뭉치고 있습니다.
+            </p>
+            <div style="margin-top:12px;">
+              <span class="pill" id="modePill">분자 간 힘 모드</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("simCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const controls = {
+      attraction: document.getElementById("attraction"),
+      temperature: document.getElementById("temperature"),
+      soap: document.getElementById("soap"),
+      gravity: document.getElementById("gravity"),
+      showForces: document.getElementById("showForces"),
+      showTrails: document.getElementById("showTrails")
+    };
+
+    const outputs = {
+      attraction: document.getElementById("attractionOut"),
+      temperature: document.getElementById("temperatureOut"),
+      soap: document.getElementById("soapOut"),
+      gravity: document.getElementById("gravityOut"),
+      surfaceScore: document.getElementById("surfaceScore"),
+      surfaceBar: document.getElementById("surfaceBar"),
+      moleculeCount: document.getElementById("moleculeCount"),
+      stateText: document.getElementById("stateText"),
+      canvasLabel: document.getElementById("canvasLabel"),
+      infoTitle: document.getElementById("infoTitle"),
+      infoText: document.getElementById("infoText"),
+      statusText: document.getElementById("statusText"),
+      modePill: document.getElementById("modePill")
+    };
+
+    let mode = "force";
+    let particles = [];
+    let soapParticles = [];
+    let clips = [];
+    let spillDrops = [];
+    let selectedParticle = null;
+    let cupWater = 0.72;
+    let cupSpill = 0;
+    let rippleTime = 0;
+    let lastTime = performance.now();
+    let dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+
+    const random = (min, max) => min + Math.random() * (max - min);
+    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+    const lerp = (a, b, t) => a + (b - a) * t;
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      canvas.width = Math.floor(rect.width * dpr);
+      canvas.height = Math.floor(rect.height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    window.addEventListener("resize", resize);
+
+    function getSettings() {
+      const attraction = Number(controls.attraction.value);
+      const temperature = Number(controls.temperature.value);
+      const soap = Number(controls.soap.value);
+      const gravity = Number(controls.gravity.value);
+
+      const surfaceTension = clamp(
+        attraction * 0.95 + 18 - temperature * 0.38 - soap * 0.62,
+        0,
+        100
+      );
+
+      return { attraction, temperature, soap, gravity, surfaceTension };
+    }
+
+    function updateOutputs() {
+      const s = getSettings();
+      outputs.attraction.textContent = s.attraction;
+      outputs.temperature.textContent = s.temperature + "℃";
+      outputs.soap.textContent = s.soap + "%";
+      outputs.gravity.textContent = s.gravity;
+      outputs.surfaceScore.textContent = Math.round(s.surfaceTension);
+      outputs.surfaceBar.style.width = s.surfaceTension + "%";
+      outputs.moleculeCount.textContent = particles.length;
+
+      let state = "낮음";
+      if (s.surfaceTension > 72) state = "강함";
+      else if (s.surfaceTension > 42) state = "보통";
+      outputs.stateText.textContent = state;
+
+      if (s.surfaceTension > 72) {
+        outputs.statusText.textContent = "표면장력이 강해 물 분자들이 단단히 뭉치고, 표면적을 줄이려는 경향이 큽니다.";
+      } else if (s.surfaceTension > 42) {
+        outputs.statusText.textContent = "표면장력이 보통 수준이라 물방울 형태는 유지되지만 온도나 비누에 따라 쉽게 흐트러질 수 있습니다.";
+      } else {
+        outputs.statusText.textContent = "표면장력이 약해져 물 분자들이 퍼지기 쉬워졌습니다. 비누를 넣은 물처럼 표면이 쉽게 무너집니다.";
+      }
+    }
+
+    function setInfo(title, text, label) {
+      outputs.infoTitle.textContent = title;
+      outputs.infoText.textContent = text;
+      outputs.canvasLabel.textContent = label;
+    }
+
+    function setMode(nextMode) {
+      mode = nextMode;
+      document.querySelectorAll(".mode-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.mode === mode);
+      });
+
+      selectedParticle = null;
+      if (mode === "force") {
+        outputs.modePill.textContent = "분자 간 힘 모드";
+        initForceMode();
+        setInfo(
+          "분자 간 힘 비교",
+          "액체 내부의 분자는 사방에서 끌려 힘이 거의 균형을 이룹니다. 반면 표면의 분자는 위쪽에 물 분자가 적어서 아래와 옆 방향으로 끌리는 힘이 더 뚜렷하게 나타납니다.",
+          "분자를 클릭해 보세요. 표면 분자와 내부 분자의 힘 방향이 다릅니다."
+        );
+      } else if (mode === "droplet") {
+        outputs.modePill.textContent = "물방울 형성 모드";
+        initDropletMode();
+        setInfo(
+          "표면적을 줄이려는 물",
+          "물 분자 사이의 인력이 커질수록 물방울은 둥근 형태로 뭉칩니다. 둥근 모양은 같은 부피에서 표면적을 가장 작게 만드는 모양에 가깝습니다.",
+          "분자들이 서로 끌어당겨 물방울을 만드는 과정을 관찰하세요."
+        );
+      } else {
+        outputs.modePill.textContent = "컵의 물 넘침 모드";
+        initCupMode();
+        setInfo(
+          "볼록하게 올라오는 물",
+          "컵에 물을 계속 넣어도 어느 정도까지는 바로 넘치지 않고 표면이 볼록하게 버팁니다. 표면장력이 물의 표면을 잡아당겨 얇은 막처럼 작용하기 때문입니다.",
+          "물 한 방울 추가 버튼을 눌러 컵 위의 물이 얼마나 버티는지 보세요."
+        );
+      }
+      updateOutputs();
+    }
+
+    function initForceMode() {
+      particles = [];
+      soapParticles = [];
+      clips = [];
+      spillDrops = [];
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width || 900;
+      const h = rect.height || 520;
+
+      const startX = w * 0.19;
+      const startY = h * 0.31;
+      const cols = 12;
+      const rows = 6;
+      const gap = Math.min(42, w / 22);
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          particles.push({
+            x: startX + x * gap + random(-2, 2),
+            y: startY + y * gap + random(-2, 2),
+            vx: 0,
+            vy: 0,
+            r: 10,
+            surface: y === 0,
+            row: y,
+            col: x
+          });
+        }
+      }
+    }
+
+    function initDropletMode() {
+      particles = [];
+      soapParticles = [];
+      clips = [];
+      spillDrops = [];
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width || 900;
+      const h = rect.height || 520;
+      const count = 90;
+
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: w * 0.5 + random(-w * 0.22, w * 0.22),
+          y: h * 0.49 + random(-h * 0.18, h * 0.18),
+          vx: random(-0.8, 0.8),
+          vy: random(-0.8, 0.8),
+          r: random(5.5, 8.5),
+          surface: false
+        });
+      }
+    }
+
+    function initCupMode() {
+      particles = [];
+      soapParticles = [];
+      clips = [];
+      spillDrops = [];
+      cupWater = 0.72;
+      cupSpill = 0;
+      rippleTime = 0;
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width || 900;
+      const h = rect.height || 520;
+      const geom = getCupGeometry(w, h, getSettings());
+
+      for (let i = 0; i < 72; i++) {
+        const y = random(geom.topY + 72, geom.bottomY - 20);
+        const left = cupLeftAtY(geom, y) + 18;
+        const right = cupRightAtY(geom, y) - 18;
+        particles.push({
+          x: random(left, right),
+          y,
+          vx: random(-0.35, 0.35),
+          vy: random(-0.25, 0.25),
+          r: random(5.2, 7.8),
+          surface: false,
+          depth: random(0.12, 0.94),
+          phase: random(0, Math.PI * 2),
+          falling: false
+        });
+      }
+    }
+
+    function drawBackground(w, h) {
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, "#ffffff");
+      grad.addColorStop(0.52, "#eaf8ff");
+      grad.addColorStop(1, "#dff3ff");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.strokeStyle = "rgba(47, 141, 243, 0.08)";
+      ctx.lineWidth = 1;
+      for (let x = 0; x < w; x += 44) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+      for (let y = 0; y < h; y += 44) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+    }
+
+    function drawMolecule(p, highlight = false) {
+      const grd = ctx.createRadialGradient(p.x - p.r * 0.3, p.y - p.r * 0.45, 1, p.x, p.y, p.r * 1.45);
+      if (p.surface) {
+        grd.addColorStop(0, "#d8fbff");
+        grd.addColorStop(0.42, "#55d4ff");
+        grd.addColorStop(1, "#1767c6");
+      } else {
+        grd.addColorStop(0, "#d8efff");
+        grd.addColorStop(0.45, "#4d9cff");
+        grd.addColorStop(1, "#155db3");
+      }
+
+      ctx.save();
+      ctx.shadowColor = "rgba(23, 103, 198, 0.24)";
+      ctx.shadowBlur = 12;
+      ctx.fillStyle = grd;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = highlight ? "#ffcf5c" : (p.surface ? "#114f9c" : "rgba(255,255,255,0.75)");
+      ctx.lineWidth = highlight ? 4 : 2;
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(255,255,255,0.72)";
+      ctx.beginPath();
+      ctx.arc(p.x - p.r * 0.35, p.y - p.r * 0.38, p.r * 0.24, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawSoapParticle(p) {
+      ctx.save();
+      ctx.fillStyle = "#ffcf5c";
+      ctx.strokeStyle = "#db9c1f";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r || 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.62)";
+      ctx.beginPath();
+      ctx.arc(p.x - 2, p.y - 3, 2.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawArrow(x1, y1, x2, y2, color = "#ff5b6e", width = 3) {
+      const angle = Math.atan2(y2 - y1, x2 - x1);
+      const head = 9;
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - head * Math.cos(angle - Math.PI / 6), y2 - head * Math.sin(angle - Math.PI / 6));
+      ctx.lineTo(x2 - head * Math.cos(angle + Math.PI / 6), y2 - head * Math.sin(angle + Math.PI / 6));
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawSpeechBox(x, y, title, text) {
+      const width = 270;
+      const height = 96;
+      const rx = clamp(x, 18, canvas.getBoundingClientRect().width - width - 18);
+      const ry = clamp(y, 18, canvas.getBoundingClientRect().height - height - 18);
+      ctx.save();
+      ctx.fillStyle = "rgba(255,255,255,0.92)";
+      ctx.strokeStyle = "rgba(47, 141, 243, 0.22)";
+      ctx.lineWidth = 1.5;
+      roundRect(rx, ry, width, height, 18);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#1767c6";
+      ctx.font = "900 14px Pretendard, sans-serif";
+      ctx.fillText(title, rx + 16, ry + 26);
+      ctx.fillStyle = "#5d7084";
+      ctx.font = "700 12px Pretendard, sans-serif";
+      wrapText(text, rx + 16, ry + 48, width - 32, 17);
+      ctx.restore();
+    }
+
+    function roundRect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    function wrapText(text, x, y, maxWidth, lineHeight) {
+      const words = text.split(" ");
+      let line = "";
+      let yy = y;
+      for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + " ";
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && n > 0) {
+          ctx.fillText(line, x, yy);
+          line = words[n] + " ";
+          yy += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      ctx.fillText(line, x, yy);
+    }
+
+    function drawForceMode(w, h) {
+      const waterTop = particles.length ? Math.min(...particles.map(p => p.y)) - 24 : h * 0.28;
+      const waterBottom = particles.length ? Math.max(...particles.map(p => p.y)) + 28 : h * 0.72;
+      const waterLeft = particles.length ? Math.min(...particles.map(p => p.x)) - 32 : w * 0.16;
+      const waterRight = particles.length ? Math.max(...particles.map(p => p.x)) + 32 : w * 0.82;
+
+      ctx.save();
+      ctx.fillStyle = "rgba(255,255,255,0.56)";
+      ctx.fillRect(waterLeft, 0, waterRight - waterLeft, waterTop);
+      ctx.fillStyle = "rgba(79, 179, 255, 0.16)";
+      roundRect(waterLeft, waterTop, waterRight - waterLeft, waterBottom - waterTop, 18);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(23, 103, 198, 0.22)";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(93,112,132,0.88)";
+      ctx.font = "900 15px Pretendard, sans-serif";
+      ctx.fillText("공기", waterRight - 58, waterTop - 18);
+      ctx.fillStyle = "rgba(23,103,198,0.88)";
+      ctx.fillText("물", waterLeft + 18, waterBottom - 18);
+      ctx.restore();
+
+      particles.forEach(p => {
+        const wiggle = Math.sin(performance.now() * 0.002 + p.col * 0.7 + p.row) * 0.35;
+        p.x += wiggle * 0.06;
+        p.y += Math.cos(performance.now() * 0.002 + p.col) * 0.025;
+        drawMolecule(p, selectedParticle === p);
+      });
+
+      if (controls.showForces.checked) {
+        const targets = selectedParticle ? [selectedParticle] : particles.filter((p, i) => p.surface && i % 2 === 0).slice(0, 5);
+        targets.forEach(p => {
+          const len = p.surface ? 33 : 27;
+          if (p.surface) {
+            drawArrow(p.x, p.y, p.x - len, p.y, "#ff5b6e", 2.8);
+            drawArrow(p.x, p.y, p.x + len, p.y, "#ff5b6e", 2.8);
+            drawArrow(p.x, p.y, p.x, p.y + len * 1.25, "#ff5b6e", 2.8);
+            drawArrow(p.x, p.y, p.x, p.y + len * 1.8, "#7b61ff", 4);
+          } else {
+            drawArrow(p.x, p.y, p.x - len, p.y, "#ff5b6e", 2.4);
+            drawArrow(p.x, p.y, p.x + len, p.y, "#ff5b6e", 2.4);
+            drawArrow(p.x, p.y, p.x, p.y - len, "#ff5b6e", 2.4);
+            drawArrow(p.x, p.y, p.x, p.y + len, "#ff5b6e", 2.4);
+          }
+        });
+      }
+
+      if (selectedParticle) {
+        if (selectedParticle.surface) {
+          drawSpeechBox(selectedParticle.x + 20, selectedParticle.y - 120, "표면 분자", "위쪽에는 물 분자가 적어 아래쪽 합력이 생깁니다.");
+        } else {
+          drawSpeechBox(selectedParticle.x + 20, selectedParticle.y - 120, "내부 분자", "사방에서 끌려 힘이 대체로 상쇄됩니다.");
+        }
+      } else {
+        drawSpeechBox(w * 0.07, h * 0.18, "관찰", "표면 분자는 아래와 옆 방향 힘이 두드러집니다.");
+      }
+    }
+
+    function applyDropletPhysics(dt, w, h) {
+      const s = getSettings();
+      const cx = w * 0.5;
+      const cy = h * 0.52;
+      const cohesion = s.surfaceTension / 100;
+      const heat = s.temperature / 100;
+      const soap = s.soap / 100;
+      const gravity = (s.gravity - 50) / 2500;
+
+      for (const p of particles) {
+        const dx = cx - p.x;
+        const dy = cy - p.y;
+        const dist = Math.hypot(dx, dy) || 1;
+
+        p.vx += (dx / dist) * cohesion * 0.038;
+        p.vy += (dy / dist) * cohesion * 0.038;
+
+        p.vx += random(-1, 1) * (0.012 + heat * 0.09 + soap * 0.035);
+        p.vy += random(-1, 1) * (0.012 + heat * 0.09 + soap * 0.035);
+        p.vy += gravity;
+
+        const repelRadius = 17;
+        for (let j = 0; j < particles.length; j++) {
+          const q = particles[j];
+          if (q === p) continue;
+          const rx = p.x - q.x;
+          const ry = p.y - q.y;
+          const rd = Math.hypot(rx, ry) || 1;
+          if (rd < repelRadius) {
+            const push = (repelRadius - rd) * 0.005;
+            p.vx += (rx / rd) * push;
+            p.vy += (ry / rd) * push;
+          }
+        }
+
+        p.vx *= 0.985 - heat * 0.02;
+        p.vy *= 0.985 - heat * 0.02;
+        p.x += p.vx * dt * 60;
+        p.y += p.vy * dt * 60;
+
+        if (p.x < 28 || p.x > w - 28) p.vx *= -0.75;
+        if (p.y < 54 || p.y > h - 28) p.vy *= -0.75;
+        p.x = clamp(p.x, 28, w - 28);
+        p.y = clamp(p.y, 54, h - 28);
+      }
+
+      const avgDist = particles.reduce((sum, p) => sum + Math.hypot(p.x - cx, p.y - cy), 0) / Math.max(1, particles.length);
+      particles.forEach(p => {
+        const d = Math.hypot(p.x - cx, p.y - cy);
+        p.surface = d > avgDist * 1.02;
+      });
+    }
+
+    function drawDropletMode(w, h, dt) {
+      if (!controls.showTrails.checked) {
+        ctx.save();
+        ctx.fillStyle = "rgba(234, 248, 255, 0.16)";
+        ctx.fillRect(0, 0, w, h);
+        ctx.restore();
+      }
+
+      applyDropletPhysics(dt, w, h);
+      const s = getSettings();
+      const cx = w * 0.5;
+      const cy = h * 0.52;
+
+      ctx.save();
+      ctx.strokeStyle = "rgba(47, 141, 243, 0.18)";
+      ctx.setLineDash([8, 10]);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, lerp(170, 95, s.surfaceTension / 100), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      particles.forEach(p => drawMolecule(p));
+
+      soapParticles.forEach(p => {
+        p.y += Math.sin(performance.now() * 0.003 + p.x) * 0.05;
+        drawSoapParticle(p);
+      });
+
+      if (controls.showForces.checked) {
+        particles.filter(p => p.surface).slice(0, 18).forEach(p => {
+          const dx = cx - p.x;
+          const dy = cy - p.y;
+          const dist = Math.hypot(dx, dy) || 1;
+          drawArrow(p.x, p.y, p.x + dx / dist * 26, p.y + dy / dist * 26, "#7b61ff", 2);
+        });
+      }
+
+      ctx.save();
+      ctx.fillStyle = "rgba(23, 50, 77, 0.72)";
+      ctx.font = "900 14px Pretendard, sans-serif";
+      ctx.fillText("표면적을 줄이려는 방향", cx - 70, cy - 150);
+      ctx.restore();
+    }
+
+
+    function getCupGeometry(w, h, s) {
+      const cupW = Math.min(340, w * 0.45);
+      const cupH = Math.min(260, h * 0.48);
+      const x = w * 0.5 - cupW / 2;
+      const y = h * 0.47 - cupH * 0.2;
+      const topY = y + 36;
+      const bottomY = y + cupH;
+      const cx = x + cupW / 2;
+      const tension = s.surfaceTension / 100;
+      const waterBaseY = lerp(bottomY - 30, topY + 4, clamp(cupWater, 0, 1.12));
+      const waterTop = Math.min(topY + 10, waterBaseY);
+      const clipLoad = clips.filter(c => c.state === "floating").length * 9;
+      const dome = clamp((cupWater - 0.72) * 155 * tension - clipLoad * (0.25 + (1 - tension) * 0.45), 0, 74);
+      return { x, y, cupW, cupH, topY, bottomY, cx, waterBaseY, waterTop, dome };
+    }
+
+    function cupLeftAtY(geom, y) {
+      const t = clamp((y - (geom.topY + 5)) / Math.max(1, geom.bottomY - (geom.topY + 5)), 0, 1);
+      return lerp(geom.x + 12, geom.x + geom.cupW * 0.18, t);
+    }
+
+    function cupRightAtY(geom, y) {
+      const t = clamp((y - (geom.topY + 5)) / Math.max(1, geom.bottomY - (geom.topY + 5)), 0, 1);
+      return lerp(geom.x + geom.cupW - 12, geom.x + geom.cupW * 0.82, t);
+    }
+
+    function waterSurfaceYAtX(geom, x, includeRipples = true) {
+      const rim = geom.cupW / 2 - 24;
+      const nx = clamp((x - geom.cx) / rim, -1, 1);
+      let y = geom.waterTop - geom.dome * (1 - nx * nx);
+      if (includeRipples) {
+        y += Math.sin(performance.now() * 0.006 + nx * 5.7) * (2.2 + rippleTime * 10);
+        clips.forEach(c => {
+          if (c.state !== "floating") return;
+          const dx = x - c.x;
+          y += Math.exp(-(dx * dx) / 1500) * (8 + (1 - getSettings().surfaceTension / 100) * 9);
+        });
+      }
+      return y;
+    }
+
+    function makeSpillDrops(geom, amount = 8, preferredSide = null) {
+      const sideList = preferredSide ? [preferredSide] : [-1, 1];
+      for (let i = 0; i < amount; i++) {
+        const side = sideList[i % sideList.length];
+        const rimX = side < 0 ? geom.x + 18 : geom.x + geom.cupW - 18;
+        spillDrops.push({
+          x: rimX + side * random(0, 12),
+          y: geom.topY + random(-4, 16),
+          vx: side * random(0.25, 1.2),
+          vy: random(0.7, 2.0),
+          r: random(3.5, 8.5),
+          side,
+          life: random(0.8, 1.4),
+          trail: []
+        });
+      }
+      cupSpill = spillDrops.length;
+    }
+
+    function updateSpillDrops(geom, dt) {
+      spillDrops.forEach(d => {
+        d.trail.push({ x: d.x, y: d.y });
+        if (d.trail.length > 8) d.trail.shift();
+        const wallX = d.side < 0 ? cupLeftAtY(geom, d.y) - 7 : cupRightAtY(geom, d.y) + 7;
+        d.x += (wallX - d.x) * 0.08 + d.vx * dt * 60;
+        d.y += d.vy * dt * 60;
+        d.vy += 0.045 * dt * 60;
+        d.vx *= 0.985;
+        d.life -= dt * 0.08;
+      });
+      spillDrops = spillDrops.filter(d => d.y < geom.bottomY + 115 && d.life > 0);
+      cupSpill = spillDrops.length;
+    }
+
+    function drawSpillDrops() {
+      ctx.save();
+      spillDrops.forEach(d => {
+        ctx.strokeStyle = "rgba(47, 141, 243, 0.23)";
+        ctx.lineWidth = Math.max(1, d.r * 0.55);
+        ctx.lineCap = "round";
+        if (d.trail.length > 1) {
+          ctx.beginPath();
+          ctx.moveTo(d.trail[0].x, d.trail[0].y);
+          for (const t of d.trail) ctx.lineTo(t.x, t.y);
+          ctx.stroke();
+        }
+        const grad = ctx.createRadialGradient(d.x - d.r * 0.3, d.y - d.r * 0.4, 1, d.x, d.y, d.r * 1.6);
+        grad.addColorStop(0, "rgba(225, 250, 255, 0.95)");
+        grad.addColorStop(0.45, "rgba(91, 211, 255, 0.82)");
+        grad.addColorStop(1, "rgba(47, 141, 243, 0.58)");
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.restore();
+    }
+
+    function drawPaperClip(c) {
+      ctx.save();
+      ctx.translate(c.x, c.y);
+      ctx.rotate(c.angle);
+      ctx.lineWidth = 4.2;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = c.state === "floating" ? "#7e8da0" : "rgba(126, 141, 160, 0.72)";
+      ctx.shadowColor = "rgba(23, 50, 77, 0.2)";
+      ctx.shadowBlur = c.state === "floating" ? 8 : 3;
+      roundRect(-31, -11, 62, 22, 11);
+      ctx.stroke();
+      ctx.lineWidth = 3.2;
+      roundRect(-20, -5.5, 40, 11, 6);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = "rgba(255,255,255,0.62)";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(-24, -8);
+      ctx.lineTo(24, -8);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function updateClips(geom, s, dt) {
+      const tension = s.surfaceTension / 100;
+      clips.forEach((c, i) => {
+        const surfaceY = waterSurfaceYAtX(geom, c.x, true);
+        const support = tension * 1.05 - (s.soap / 100) * 0.55 - Math.max(0, clips.length - 2) * 0.06;
+        if (c.state === "floating" && support < 0.42) {
+          c.state = "sinking";
+          c.vy = Math.max(c.vy, 1.2);
+          makeSpillDrops(geom, 5, c.x < geom.cx ? -1 : 1);
+        }
+
+        if (c.state === "floating") {
+          c.vx += Math.sin(performance.now() * 0.0017 + i) * 0.012;
+          c.x += c.vx * dt * 60;
+          c.y += (surfaceY + 6 - c.y) * 0.1;
+          c.vy *= 0.9;
+          c.vx *= 0.96;
+          c.angle = Math.sin(performance.now() * 0.003 + i * 1.7) * 0.08;
+          rippleTime = Math.max(rippleTime, 0.12);
+        } else {
+          c.vy += (0.045 + s.gravity / 4200) * dt * 60;
+          c.x += c.vx * dt * 60;
+          c.y += c.vy * dt * 60;
+          c.angle += c.spin * dt * 60;
+          if (c.y > geom.bottomY - 18) {
+            c.y = geom.bottomY - 18;
+            c.vy *= -0.16;
+            c.vx *= 0.88;
+            c.spin *= 0.92;
+          }
+        }
+
+        const left = cupLeftAtY(geom, clamp(c.y, geom.topY, geom.bottomY)) + 28;
+        const right = cupRightAtY(geom, clamp(c.y, geom.topY, geom.bottomY)) - 28;
+        if (c.x < left) { c.x = left; c.vx = Math.abs(c.vx) * 0.4; }
+        if (c.x > right) { c.x = right; c.vx = -Math.abs(c.vx) * 0.4; }
+      });
+    }
+
+    function drawCup(w, h, s) {
+      const geom = getCupGeometry(w, h, s);
+      const { x, cupW, topY, bottomY, waterTop, dome } = geom;
+
+      ctx.save();
+
+      // 뒤쪽 유리 테두리
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = "rgba(23, 50, 77, 0.28)";
+      ctx.fillStyle = "rgba(255,255,255,0.18)";
+      ctx.beginPath();
+      ctx.ellipse(x + cupW / 2, topY, cupW / 2, 30, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 물 본체
+      const waterGrad = ctx.createLinearGradient(0, waterTop - dome, 0, bottomY);
+      waterGrad.addColorStop(0, "rgba(91, 211, 255, 0.78)");
+      waterGrad.addColorStop(1, "rgba(47, 141, 243, 0.50)");
+      ctx.fillStyle = waterGrad;
+
+      ctx.beginPath();
+      ctx.moveTo(x + 22, waterTop);
+      ctx.bezierCurveTo(
+        x + cupW * 0.28, waterTop - dome,
+        x + cupW * 0.72, waterTop - dome,
+        x + cupW - 22, waterTop
+      );
+      ctx.lineTo(cupRightAtY(geom, bottomY - 4), bottomY - 4);
+      ctx.quadraticCurveTo(x + cupW / 2, bottomY + 24, cupLeftAtY(geom, bottomY - 4), bottomY - 4);
+      ctx.closePath();
+      ctx.fill();
+
+      // 표면 하이라이트와 잔물결
+      ctx.strokeStyle = "rgba(255,255,255,0.9)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      const start = x + 28;
+      const end = x + cupW - 28;
+      for (let i = 0; i <= 36; i++) {
+        const px = lerp(start, end, i / 36);
+        const py = waterSurfaceYAtX(geom, px, true);
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+
+      ctx.strokeStyle = "rgba(23, 103, 198, 0.18)";
+      ctx.lineWidth = 1.2;
+      for (let r = 0; r < 3; r++) {
+        ctx.beginPath();
+        const yy = waterTop + 28 + r * 42;
+        ctx.ellipse(x + cupW / 2, yy, cupW * (0.39 - r * 0.035), 10, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+
+      drawSpillDrops();
+
+      // 앞쪽 유리벽
+      ctx.save();
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = "rgba(23, 50, 77, 0.42)";
+      ctx.fillStyle = "rgba(255,255,255,0.10)";
+      ctx.beginPath();
+      ctx.moveTo(x + 12, topY + 5);
+      ctx.lineTo(x + cupW * 0.18, bottomY);
+      ctx.quadraticCurveTo(x + cupW / 2, bottomY + 40, x + cupW * 0.82, bottomY);
+      ctx.lineTo(x + cupW - 12, topY + 5);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(x + cupW / 2, topY, cupW / 2, 30, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      return geom;
+    }
+
+    function updateCupParticles(w, h, dt, geom) {
+      const s = getSettings();
+      const tension = s.surfaceTension / 100;
+      const heat = s.temperature / 100;
+      const gravity = s.gravity / 100;
+      const t = performance.now() * 0.001;
+
+      particles.forEach((p, i) => {
+        if (p.falling) {
+          p.vy += (0.06 + gravity * 0.08) * dt * 60;
+          p.y += p.vy * dt * 60;
+          p.x += p.vx * dt * 60;
+          if (p.y >= waterSurfaceYAtX(geom, p.x, true) + 8) {
+            p.falling = false;
+            p.depth = random(0.05, 0.35);
+            p.vy *= -0.12;
+            rippleTime = 1;
+          }
+          return;
+        }
+
+        const targetSurface = waterSurfaceYAtX(geom, p.x, true);
+        const targetY = lerp(targetSurface + 16, geom.bottomY - 26, p.depth);
+        const left = cupLeftAtY(geom, p.y) + p.r + 6;
+        const right = cupRightAtY(geom, p.y) - p.r - 6;
+        const targetX = geom.cx + Math.sin(i * 1.9 + t * (0.7 + heat * 1.4)) * (geom.cupW * 0.26 * (1 - p.depth * 0.35));
+
+        p.vx += (targetX - p.x) * 0.00042 * (0.4 + tension);
+        p.vy += (targetY - p.y) * 0.00062 * (0.5 + tension);
+        p.vx += Math.sin(t * 3.2 + p.phase) * 0.012 + random(-1, 1) * (0.012 + heat * 0.04);
+        p.vy += Math.cos(t * 2.6 + p.phase) * 0.010 + random(-1, 1) * (0.010 + heat * 0.035);
+
+        // 표면장력이 낮으면 표면 입자들이 가장자리로 밀려 넘치기 쉬움
+        if (p.depth < 0.18 && tension < 0.35 && Math.random() < 0.006) {
+          const side = p.x < geom.cx ? -1 : 1;
+          makeSpillDrops(geom, 1, side);
+          p.x = geom.cx + random(-40, 40);
+          p.y = targetSurface + random(14, 40);
+          p.depth = random(0.18, 0.55);
+        }
+
+        p.vx *= 0.965;
+        p.vy *= 0.965;
+        p.x += p.vx * dt * 60;
+        p.y += p.vy * dt * 60;
+
+        if (p.x < left) { p.x = left; p.vx = Math.abs(p.vx) * 0.45; }
+        if (p.x > right) { p.x = right; p.vx = -Math.abs(p.vx) * 0.45; }
+        if (p.y < targetSurface + 5) { p.y = targetSurface + 5; p.vy = Math.abs(p.vy) * 0.25; }
+        if (p.y > geom.bottomY - 18) { p.y = geom.bottomY - 18; p.vy *= -0.25; }
+        p.surface = p.depth < 0.22 || p.y < targetSurface + 30;
+      });
+    }
+
+    function drawCupMode(w, h, dt) {
+      const s = getSettings();
+      rippleTime = Math.max(0, rippleTime - dt * 1.8);
+
+      let geom = getCupGeometry(w, h, s);
+      const critical = 0.88 + (s.surfaceTension / 100) * 0.18 - clips.length * 0.012;
+      if (cupWater > critical) {
+        const overflow = (cupWater - critical) * (0.24 + (1 - s.surfaceTension / 100) * 0.45);
+        cupWater -= overflow;
+        makeSpillDrops(geom, Math.ceil(overflow * 90) + 2);
+      }
+
+      updateSpillDrops(geom, dt);
+      geom = drawCup(w, h, s);
+      updateCupParticles(w, h, dt, geom);
+      updateClips(geom, s, dt);
+
+      // 컵 안쪽 입자는 물 표면 안에서만 보이도록 대략적인 클리핑
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(cupLeftAtY(geom, geom.topY + 2), geom.topY + 2);
+      ctx.lineTo(cupLeftAtY(geom, geom.bottomY), geom.bottomY + 20);
+      ctx.quadraticCurveTo(geom.cx, geom.bottomY + 44, cupRightAtY(geom, geom.bottomY), geom.bottomY + 20);
+      ctx.lineTo(cupRightAtY(geom, geom.topY + 2), geom.topY + 2);
+      ctx.closePath();
+      ctx.clip();
+      particles.forEach(p => drawMolecule(p));
+      clips.filter(c => c.state === "sinking").forEach(c => drawPaperClip(c));
+      ctx.restore();
+
+      clips.filter(c => c.state === "floating").forEach(c => drawPaperClip(c));
+      soapParticles.forEach(p => {
+        p.y += Math.sin(performance.now() * 0.003 + p.x) * 0.08;
+        p.x += Math.sin(performance.now() * 0.002 + p.y) * 0.04;
+        drawSoapParticle(p);
+      });
+
+      if (controls.showForces.checked) {
+        const y = waterSurfaceYAtX(geom, geom.cx, true);
+        drawArrow(geom.x + geom.cupW * 0.35, y + 2, geom.x + geom.cupW * 0.48, y - 2, "#7b61ff", 3);
+        drawArrow(geom.x + geom.cupW * 0.65, y + 2, geom.x + geom.cupW * 0.52, y - 2, "#7b61ff", 3);
+        if (clips.some(c => c.state === "floating")) {
+          const c = clips.find(c => c.state === "floating");
+          drawArrow(c.x, c.y + 10, c.x, c.y + 42, "#ff5b6e", 2.5);
+          drawArrow(c.x - 22, c.y + 10, c.x - 22, c.y - 18, "#37c98f", 2.5);
+          drawArrow(c.x + 22, c.y + 10, c.x + 22, c.y - 18, "#37c98f", 2.5);
+        }
+      }
+
+      ctx.save();
+      ctx.fillStyle = "rgba(255,255,255,0.88)";
+      ctx.strokeStyle = "rgba(47, 141, 243, 0.2)";
+      ctx.lineWidth = 1.5;
+      roundRect(26, h - 126, 370, 96, 18);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#1767c6";
+      ctx.font = "900 14px Pretendard, sans-serif";
+      ctx.fillText("컵 위의 볼록한 물과 클립", 44, h - 94);
+      ctx.fillStyle = "#5d7084";
+      ctx.font = "700 12px Pretendard, sans-serif";
+      const floating = clips.filter(c => c.state === "floating").length;
+      const sinking = clips.filter(c => c.state === "sinking").length;
+      const msg = floating > 0
+        ? "클립이 물 표면을 누르지만, 표면장력이 위쪽으로 버티며 떠 있습니다. 비누를 넣으면 힘이 약해져 가라앉습니다."
+        : sinking > 0
+          ? "표면장력이 부족해 클립이 표면막을 뚫고 가라앉았습니다. 물은 컵 벽을 따라 흘러내립니다."
+          : "표면장력이 높을수록 물 표면이 더 오래 버팁니다. 클립을 넣어 표면막이 버티는 모습을 확인하세요.";
+      wrapText(msg, 44, h - 71, 326, 17);
+      ctx.restore();
+    }
+
+    function animate(now) {
+      const dt = Math.min(0.033, (now - lastTime) / 1000);
+      lastTime = now;
+
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+
+      if (!controls.showTrails.checked || mode !== "droplet") {
+        drawBackground(w, h);
+      } else {
+        ctx.fillStyle = "rgba(234,248,255,0.055)";
+        ctx.fillRect(0, 0, w, h);
+      }
+
+      if (mode === "force") drawForceMode(w, h);
+      if (mode === "droplet") drawDropletMode(w, h, dt);
+      if (mode === "cup") drawCupMode(w, h, dt);
+
+      updateOutputs();
+      requestAnimationFrame(animate);
+    }
+
+    function addDrop() {
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+
+      if (mode === "force") {
+        const topRow = particles.filter(p => p.surface);
+        const x = random(w * 0.2, w * 0.75);
+        const y = Math.min(...topRow.map(p => p.y)) - 42;
+        particles.push({ x, y, vx: 0, vy: 0, r: 10, surface: true, row: -1, col: 0 });
+      } else if (mode === "droplet") {
+        for (let i = 0; i < 12; i++) {
+          particles.push({
+            x: w * 0.5 + random(-70, 70),
+            y: h * 0.18 + random(-20, 20),
+            vx: random(-0.5, 0.5),
+            vy: random(0.5, 2.2),
+            r: random(5.5, 8.5),
+            surface: true
+          });
+        }
+      } else {
+        const geom = getCupGeometry(w, h, getSettings());
+        cupWater += 0.043;
+        rippleTime = 1;
+        for (let i = 0; i < 10; i++) {
+          particles.push({
+            x: geom.cx + random(-70, 70),
+            y: geom.topY - random(70, 125),
+            vx: random(-0.45, 0.45),
+            vy: random(1.1, 2.8),
+            r: random(5.2, 8),
+            surface: true,
+            depth: random(0.05, 0.32),
+            phase: random(0, Math.PI * 2),
+            falling: true
+          });
+        }
+      }
+    }
+
+    function addClip() {
+      if (mode !== "cup") setMode("cup");
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+      const s = getSettings();
+      const geom = getCupGeometry(w, h, s);
+      const x = geom.cx + random(-44, 44);
+      const surfaceY = waterSurfaceYAtX(geom, x, false);
+      const willFloat = s.surfaceTension > 43 && Number(controls.soap.value) < 58 && clips.length < 7;
+      clips.push({
+        x,
+        y: surfaceY - random(55, 85),
+        vx: random(-0.25, 0.25),
+        vy: willFloat ? 0.7 : 1.5,
+        angle: random(-0.2, 0.2),
+        spin: random(-0.025, 0.025),
+        state: willFloat ? "floating" : "sinking"
+      });
+      cupWater += willFloat ? 0.019 : 0.027;
+      rippleTime = 1;
+      if (!willFloat) makeSpillDrops(geom, 4);
+      setInfo(
+        "클립과 표면장력",
+        "클립을 조심히 올리면 물 표면이 얇은 막처럼 아래로 휘어지며 버틸 수 있습니다. 하지만 비누가 들어가거나 표면장력이 낮아지면 막이 끊기듯 클립이 가라앉습니다.",
+        "클립이 물 표면을 누르면 표면이 움푹 들어가고 잔물결이 생깁니다."
+      );
+    }
+
+    function addSoap() {
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+
+      controls.soap.value = clamp(Number(controls.soap.value) + 18, 0, 100);
+      for (let i = 0; i < 12; i++) {
+        soapParticles.push({
+          x: random(w * 0.25, w * 0.75),
+          y: mode === "cup" ? random(h * 0.2, h * 0.45) : random(h * 0.22, h * 0.75),
+          r: random(5, 8)
+        });
+      }
+
+      particles.forEach(p => {
+        p.vx += random(-3, 3);
+        p.vy += random(-3, 3);
+      });
+
+      if (mode === "cup") {
+        const geom = getCupGeometry(w, h, getSettings());
+        makeSpillDrops(geom, 8);
+        clips.forEach(c => {
+          if (c.state === "floating" && getSettings().surfaceTension < 48) {
+            c.state = "sinking";
+            c.vy = Math.max(c.vy, 1.2);
+          }
+        });
+        rippleTime = 1;
+      }
+    }
+
+    function shake() {
+      particles.forEach(p => {
+        p.vx += random(-5, 5);
+        p.vy += random(-5, 5);
+      });
+      clips.forEach(c => {
+        c.vx += random(-1.8, 1.8);
+        c.vy += random(-0.5, 1.5);
+        c.spin += random(-0.02, 0.02);
+      });
+      if (mode === "cup") {
+        const rect = canvas.getBoundingClientRect();
+        const geom = getCupGeometry(rect.width, rect.height, getSettings());
+        makeSpillDrops(geom, 5);
+        rippleTime = 1;
+      }
+    }
+
+    document.querySelectorAll(".mode-btn").forEach(btn => {
+      btn.addEventListener("click", () => setMode(btn.dataset.mode));
+    });
+
+    Object.values(controls).forEach(el => {
+      el.addEventListener("input", updateOutputs);
+    });
+
+    document.getElementById("addDrop").addEventListener("click", addDrop);
+    document.getElementById("addClip").addEventListener("click", addClip);
+    document.getElementById("addSoap").addEventListener("click", addSoap);
+    document.getElementById("shake").addEventListener("click", shake);
+    document.getElementById("reset").addEventListener("click", () => {
+      controls.attraction.value = 75;
+      controls.temperature.value = 25;
+      controls.soap.value = 0;
+      controls.gravity.value = 50;
+      controls.showForces.checked = true;
+      controls.showTrails.checked = false;
+      setMode(mode);
+    });
+
+    canvas.addEventListener("click", (event) => {
+      if (mode !== "force") return;
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+
+      let nearest = null;
+      let nearestDist = Infinity;
+      particles.forEach(p => {
+        const d = Math.hypot(p.x - x, p.y - y);
+        if (d < nearestDist) {
+          nearest = p;
+          nearestDist = d;
+        }
+      });
+
+      if (nearest && nearestDist < 22) {
+        selectedParticle = nearest;
+        if (nearest.surface) {
+          setInfo(
+            "선택한 분자: 표면 분자",
+            "이 분자는 액체 표면에 있습니다. 위쪽에는 물 분자가 거의 없기 때문에 아래와 옆 방향으로만 분자 간 힘을 강하게 받습니다. 그래서 표면은 안쪽으로 줄어들려는 성질을 가집니다.",
+            "표면 분자는 아래쪽으로 향하는 합력이 생깁니다."
+          );
+        } else {
+          setInfo(
+            "선택한 분자: 내부 분자",
+            "이 분자는 액체 내부에 있습니다. 주변 모든 방향에 다른 물 분자가 있어 끌어당기는 힘이 대체로 균형을 이룹니다.",
+            "내부 분자는 여러 방향에서 끌려 힘이 상쇄됩니다."
+          );
+        }
+      }
+    });
+
+    resize();
+    setMode("force");
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
