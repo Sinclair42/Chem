@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>미적분 탐구주제 & 수학적 모델링 지원 챗봇 (수식 완벽 렌더링 버전)</title>
+    <!-- MathJax 로드: LaTeX 수식의 웹 브라우저 완벽 렌더링용 -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                displayMath: [['\\[', '\\]']],
+                processEscapes: true
+            },
+            options: {
+                ignoreHtmlClass: 'tex2jax_ignore',
+                processHtmlClass: 'tex2jax_process'
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: #f1f5f9; color: #334155; display: block; height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; display: table; width: 100%; height: calc(100vh - 40px); background: #ffffff; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); overflow: hidden; border: 1px solid #e2e8f0; }
+        
+        .sidebar { display: table-cell; width: 320px; background: #1e293b; color: #f8fafc; padding: 24px; vertical-align: top; }
+        .chat-section { display: table-cell; background: #f8fafc; vertical-align: top; position: relative; height: 100%; }
+        
+        .sidebar h2 { font-size: 18px; margin-bottom: 8px; color: #38bdf8; font-weight: 700; }
+        .sidebar p { font-size: 13px; color: #94a3b8; margin-bottom: 24px; line-height: 1.5; }
+        
+        .track-btn { width: 100%; padding: 12px 16px; background: #334155; border: 1px solid #475569; border-radius: 8px; color: #f8fafc; text-align: left; font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 10px; transition: all 0.2s ease; }
+        .track-btn:hover { background: #475569; border-color: #38bdf8; color: #38bdf8; }
+        .track-btn.active { background: #0f766e; border-color: #2dd4bf; color: #ccfbf1; }
+
+        .chat-header { background: #ffffff; padding: 20px 24px; border-bottom: 1px solid #e2e8f0; }
+        .chat-header h3 { font-size: 18px; font-weight: 700; color: #0f172a; }
+        .chat-header p { font-size: 13px; color: #64748b; }
+
+        .chat-body { padding: 24px; overflow-y: auto; height: calc(100vh - 220px); background: #f8fafc; }
+        
+        .message { margin-bottom: 20px; max-width: 90%; line-height: 1.6; }
+        .message.bot { margin-right: auto; }
+        .message.user { margin-left: auto; text-align: right; }
+        
+        .bubble { padding: 14px 18px; border-radius: 12px; font-size: 14.5px; display: inline-block; text-align: left; }
+        .message.bot .bubble { background: #ffffff; color: #1e293b; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.02); width: 100%; }
+        .message.user .bubble { background: #0f766e; color: #ffffff; border-radius: 12px 12px 0 12px; }
+
+        .topic-grid { display: block; margin-top: 12px; }
+        .topic-card { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s; text-align: left; }
+        .topic-card:hover { background: #e2e8f0; border-color: #0f766e; transform: translateY(-1px); }
+        .topic-card .title { font-weight: 700; font-size: 14px; color: #0f172a; }
+        .topic-card .badge { display: inline-block; background: #e2e8f0; color: #0f766e; font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-top: 4px; font-weight: 600; }
+
+        /* 보고서 양식 뷰어 스타일 */
+        .report-box { background: #ffffff; border: 2px solid #0f766e; border-radius: 12px; padding: 20px; margin-top: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .report-title { font-size: 16px; font-weight: 700; color: #0f766e; margin-bottom: 12px; border-bottom: 2px solid #0f766e; padding-bottom: 6px; }
+        .report-section { margin-bottom: 14px; }
+        .report-section-title { font-weight: 700; font-size: 13px; color: #334155; background: #ccfbf1; padding: 4px 8px; border-left: 4px solid #0f766e; margin-bottom: 6px; }
+        .report-text { font-size: 14px; color: #475569; padding-left: 6px; white-space: pre-line; word-break: break-all; line-height: 1.7; }
+        
+        .copy-btn { background: #0f766e; color: #ffffff; border: none; padding: 8px 16px; font-size: 13px; font-weight: 600; border-radius: 6px; cursor: pointer; margin-top: 12px; transition: background 0.2s; }
+        .copy-btn:hover { background: #0d635c; }
+
+        .welcome-box { text-align: center; padding: 40px 20px; color: #64748b; }
+        .welcome-box svg { width: 48px; height: 48px; color: #94a3b8; margin-bottom: 12px; }
+    </style>
+</head>
+<body class="tex2jax_process">
+
+<div class="container">
+    <div class="sidebar">
+        <h2>미적분 탐구 지원 시스템</h2>
+        <p>학생들의 진로 희망 계열을 선택하시면 해당 전공에 특화된 4가지 미적분 모델링 주제와 양식에 맞춘 상세 내용을 생성합니다.</p>
+        
+        <div id="track-list"></div>
+    </div>
+
+    <div class="chat-section">
+        <div class="chat-header">
+            <h3>🤖 미적분 세특 탐구 대화형 챗봇 (수식 강화 버전)</h3>
+            <p>선택된 계열의 수식 모델링과 교과 가이드를 탐색합니다. 모든 수식은 MathJax를 통해 교과서 스타일로 깨짐없이 렌더링됩니다.</p>
+        </div>
+
+        <div class="chat-body" id="chat-container">
+            <div class="welcome-box" id="welcome-message">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                <p>왼쪽 메뉴에서 학생의 진로 희망 계열을 클릭하여 탐구를 시작해 보세요.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const chatbotData = {"물리화학계열": [{"title": "포물선 운동하는 물체의 총 이동 거리 계산", "concept": "매개변수 미분 & 곡선의 길이", "motivation": "물리학에서 2차원 평면 상의 포물선 운동을 기술할 때, 위치의 변화뿐만 아니라 물체가 실제로 궤적을 따라 이동한 총 거리를 정량적으로 측정하는 것이 왜 미적분의 필수적 과제인지 호기심이 생겨 탐구함.", "background": "공기 저항이 없는 상태에서 초속도 \\(v_0\\)로 발사된 물체의 시간 \\(t\\)에 따른 위치는 매개변수 함수 \\(x(t) = v_0 \\cos(\\theta)t\\), \\(y(t) = v_0 \\sin(\\theta)t - \\frac{1}{2}gt^2\\)으로 표현됨. 뉴턴 역학의 운동 방정식과 기하학적 궤적의 연결성을 바탕으로 함.", "modeling": "시간 \\(t\\)에 따른 속도 성분은 \\(\\frac{dx}{dt} = v_0 \\cos(\\theta)\\), \\(\\frac{dy}{dt} = v_0 \\sin(\\theta) - gt\\) 임. 평면 운동에서 곡선의 길이 \\(L\\) 공식 \\(L = \\int_{0}^{T} \\sqrt{\\left(\\frac{dx}{dt}\\right)^2 + \\left(\\frac{dy}{dt}\\right)^2} dt\\)를 적용하여, \\[L = \\int_{0}^{T} \\sqrt{(v_0 \\cos\\theta)^2 + (v_0 \\sin\\theta - gt)^2} dt\\] 라는 정적분 모델을 수립함. 이 수식은 속력(속도의 크기)을 시간에 대해 적분하면 실제 이동거리가 됨을 수학적으로 증명함.", "math_extract": ["[개념 1] 매개변수로 나타내어진 함수의 미분법: \\(x, y\\)가 \\(t\\)의 함수일 때 \\(\\frac{dy}{dx} = \\frac{dy/dt}{dx/dt}\\)를 구하는 성질 활용.", "[개념 2] 정적분의 활용 (곡선의 길이): 평면 위를 움직이는 점이 그리는 곡선의 길이를 속력의 정적분으로 표현.", "[개념 3] 무리함수의 정적분: \\(\\sqrt{x^2 + a^2}\\) 꼴의 삼각치환분법 또는 로그함수가 포함되는 형태의 연산 성질."]}, {"title": "1차 화학 반응 속도식에서 물질의 농도 함수 유도", "concept": "치환적분법 (분수 형태)", "motivation": "화학 반응에서 시간이 흐름에 따라 반응 물질의 농도가 감소하는 속도는 일정하지 않고 농도에 비례하여 변함. 이 동적인 변화를 미분방정식으로 모델링하고 적분을 통해 예측할 수 있음을 알고 탐구하고자 함.", "background": "반응 속도가 반응물 한 가지의 농도에만 비례하는 반응을 1차 반응이라고 함. 화학 반응 속도론에서 시간 \\(t\\)에 따른 반응물 \\(A\\)의 농도 \\([A]\\)의 변화율은 반응 속도 상수 \\(k\\)와 \\([A]\\)의 곱에 음의 부호를 붙인 것과 같음.", "modeling": "반응 속도식은 \\(\\frac{d[A]}{dt} = -k[A]\\) 로 표현됨. 변수분리를 통해 \\(\\frac{1}{[A]} d[A] = -k dt\\) 로 식을 변형한 후 양변을 적분함: \\(\\int \\frac{1}{[A]} d[A] = \\int -k dt\\). 좌변은 \\(\\ln|[A]| + C_1\\), 우변은 \\(-kt + C_2\\)가 되며, 초기 조건 \\(t=0\\)일 때 \\([A]=[A]_0\\)를 대입하면 \\(\\ln\\frac{[A]}{[A]_0} = -kt\\) 임. 이를 지수함수로 변환하면 \\[[A] = [A]_0 e^{-kt}\\] 라는 농도 예측 모델이 유도됨.", "math_extract": ["[개념 1] 분수 꼴의 치환적분법: \\(\\int \\frac{1}{x} dx = \\ln|x| + C\\) 성질을 활용하여 변수분리된 식을 적분.", "[개념 2] 지수함수와 로그함수의 미적분: 자연로그의 정의 및 미분 성질과 지수함수로의 상호 변환.", "[개념 3] 미분가능한 함수와 순간변화율: 농도의 시간당 변화율을 도함수 \\(\\frac{d[A]}{dt}\\)로 정의하는 개념."]}, {"title": "분자 간 상호작용 에너지 그래프의 평형점 분석", "concept": "이계도함수와 변곡점", "motivation": "화학 결합에서 두 원자가 너무 가까워지면 반발력이, 멀어지면 인력이 작용함. 이 결합 에너지를 나타내는 레나드-존스 퍼텐셜 그래프에서 가장 안정적인 평형점과 물리적 상태의 급격한 변화가 일어나는 변곡점의 수학적 의미를 파악하고자 탐구함.", "background": "두 원자 간 거리 \\(r\\)에 따른 상호작용 에너지 함수는 \\[E(r) = 4\\varepsilon \\left[ \\left(\\frac{\\sigma}{r}\\right)^{12} - \\left(\\frac{\\sigma}{r}\\right)^6 \\right]\\] 로 모델링됨. \\(r^{-12}\\) 항은 강한 척력(반발), \\(r^{-6}\\) 항은 인력을 나타냄.", "modeling": "안정적인 평형 거리를 찾기 위해 1계도함수 \\(E'(r) = 0\\)을 만족하는 \\(r\\)을 구하면 \\(r = 2^{1/6}\\sigma\\) 에서 극소(에너지 최저점)를 가짐. 물리적 상태 변화의 경계면을 찾기 위해 이계도함수 \\(E''(r)\\)을 계산하여 \\(E''(r) = 0\\)이 되는 지점을 찾음. 오목과 볼록이 바뀌는 이 변곡점 \\(r_{\\text{inf}}\\)을 기점으로, 원자 간 거리가 가까워질 때 반발력의 증가 가속도가 급격히 상승하는 수학적 임계치임을 증명함.", "math_extract": ["[개념 1] 이계도함수: 함수의 그래프 형상과 변화율의 변화율을 측정하기 위해 두 번 미분하는 개념.", "[개념 2] 곡선의 오목과 볼록, 변곡점: \\(E''(r)\\)의 부호가 바뀌며 그래프의 기하학적 오목성이 변화하는 점 추출.", "[개념 3] 다항함수 형태의 미분법: \\(r^{-n}\\) 꼴의 음의 정수 지수를 가진 함수의 미분 공식 적용."]}, {"title": "다단계 화학 공정에서 발생하는 잔류 오염 물질의 최종 누적량", "concept": "등비급수의 수렴 조건과 합", "motivation": "공장 배출수나 다단계 화학 정제 공정에서 아무리 필터로 오염 물질을 걸러내도 매회 일정 비율의 잔류물이 축적됨. 공정이 무한히 반복될 때 이 잔류 오염 물질이 무한히 증가하는지, 혹은 안전한 특정 한계치에 수렴하는지 수학적으로 논증하기 위해 탐구함.", "background": "매 단계 정제 공정을 거칠 때마다 유해 물질의 \\(r\\)%가 잔류하고, 새로운 공정 도입 시마다 새로운 오염 물질 \\(a\\)가 일정하게 유입되는 이산적인 화학 공정의 누적 메커니즘을 기반으로 함.", "modeling": "1회 공정 후 잔류량은 \\(a\\), 2회 공정 후는 \\(a + ar\\), \\(n\\)회 공정 후 총 오염 물질의 누적량은 \\(S_n = a + ar + ar^2 + \\dots + ar^{n-1}\\) 임. 공정이 무한히 반복되는 상황은 무한등비급수 \\[S = \\sum_{n=1}^{\\infty} ar^{n-1}\\] 로 모델링됨. 잔류 비율 \\(r\\)이 \\(|r| < 1\\) 수렴 조건을 만족하므로, 최종 누적량은 \\(S = \\frac{a}{1-r}\\) 이라는 유한한 값으로 수렴함을 도출함.", "math_extract": ["[개념 1] 급수의 수렴과 발산: 무한히 많은 항을 더해나갈 때 합이 유한한 값에 가까워지는 현상 정의.", "[개념 2] 등비급수의 합 공식: 첫째항이 \\(a\\), 공비가 \\(r\\)일 때 \\(|r|<1\\) 조건에서 \\(S = \\frac{a}{1-r}\\) 성질 적용.", "[개념 3] 수열의 극한: \\(n\\)이 무한대로 갈 때 부분합 수열 \\(S_n\\)의 극한값을 계산하는 개념."]}], "화학생명계열": [{"title": "전염병 확산 곡선(로지스틱 변형)의 둔화 시점 추적", "concept": "이계도함수와 오목·볼록 (변곡점)", "motivation": "코로나19 등 전염병 확산 초기에는 감염자 수가 기하급수적으로 증가하다가 특정 시점 이후 완화됨. 방역 정책이 효과를 발휘하여 확산세가 '가속'에서 '둔화'로 돌아서는 수학적 터닝 포인트를 찾아내는 원리에 호기심이 생겨 탐구함.", "background": "생태학 및 의학에서 한정된 자원이나 환경용량 내에서의 성장을 설명하는 로지스틱 성장 모델 \\[P(t) = \\frac{L}{1 + Ae^{-kt}}\\] 를 기반으로 함. (\\(L\\): 최대 수용량, \\(k\\): 확산 속도)", "modeling": "시간 \\(t\\)에 따른 감염자 수 \\(f(t)\\)의 확산 속도는 1계도함수 \\(f'(t)\\)로 나타나며, 확산의 가속 여부는 이계도함수 \\(f''(t)\\)로 판단함. \\(f''(t)\\)를 계산하여 \\(f''(t) = 0\\)이 되는 지점을 구하면, \\(P(t) = \\frac{L}{2}\\) 즉, 최대 수용 감염자 수의 정확히 절반에 도달하는 시점에 부호가 (+)에서 (-)로 변함. 이 변곡점을 기점으로 그래프가 아래로 볼록에서 위로 볼록으로 변하며 확산 속도가 감소함을 증명함.", "math_extract": ["[개념 1] 이계도함수를 이용한 오목과 볼록 판정: \\(f''(x) > 0\\) 이면 아래로 볼록, \\(f''(x) < 0\\) 이면 위로 볼록인 성질.", "[개념 2] 변곡점의 정의와 조건: \\(f''(x)=0\\) 이고 좌우에서 부호가 바뀌는 점이 그래프의 곡률이 변하는 지점임을 이해.", "[개념 3] 몫의 미분법과 합성함수의 미분법: 분수 형태의 로지스틱 함수를 \\(t\\)에 대해 이계도함수까지 미분하는 연산 공식."]}, {"title": "경구 투여된 약물의 체내 총 유효 효과(AUC) 적분 계산", "concept": "부분적분법", "motivation": "신약 개발 시 환자가 먹는 알약(경구 투여)이 체내에 흡수되었다가 소멸할 때까지 몸속에 머무르며 실제로 발휘한 총 약효의 크기를 수학적으로 정량화하는 'AUC(Area Under the Curve)' 계산 방식을 이해하고자 탐구함.", "background": "약물 투여 후 혈중 약물 농도는 처음엔 급격히 상승하다가 대사 과정을 통해 지수함수 형태로 감소함. 농도 함수는 다항함수와 지수함수의 곱인 \\(C(t) = t e^{-kt}\\) 형태로 모델링됨.", "modeling": "투여 시점부터 무한한 시간까지 약물의 총 유효 효과를 구하기 위해 정적분 모델 \\[\\text{AUC} = \\int_{0}^{\\infty} t e^{-kt} dt\\] 를 수립함. 이를 계산하기 위해 부분적분법 공식 \\(\\int u v' dt = u v - \\int u' v dt\\) 를 적용함. \\(u = t, v' = e^{-kt}\\) 로 두면, \\(u' = 1, v = -\\frac{1}{k} e^{-kt}\\) 가 되어 복잡한 곱의 형태를 적분 가능한 형태로 변형하여 최종 총 효과 크기를 산출함.", "math_extract": ["[개념 1] 부분적분법: 두 함수의 곱으로 이루어진 함수를 적분할 때 사용하는 미분의 역연산 공식.", "[개념 2] 지수함수의 부정적분: \\(\\int e^{ax} dx = \\frac{1}{a} e^{ax} + C\\) 성질 활용.", "[개념 3] 정적분의 문맥적 의미와 넓이: 농도 그래프와 \\(t\\)축 사이의 면적이 체내 총 약물 노출량(유효 효과)을 뜻하는 적분의 정의."]}, {"title": "정기적 약물 복용 시 체내 독성 축적 한계선 예측", "concept": "무한등비급수", "motivation": "만성 질환자가 매일 일정한 시간에 일정한 양의 약을 복용할 때, 체내에 약물이 끊임없이 쌓여 독성 수치를 넘기지 않을까 하는 의문이 생김. 무한히 복용해도 안전한 농도 평형 상태를 유지함을 수학적 급수로 증명하고자 탐구함.", "background": "일정한 주기 \\(T\\)마다 약물 투여량 \\(M\\)을 복용하고, 다음 복용 주기 직전까지 체내에 대사되지 않고 남아있는 비율이 \\(r\\) (\\(0 < r < 1\\))인 생체 대사 모델링을 따름.", "modeling": "1회 복용 직후 체내량은 \\(M\\), 2회 복용 직후는 \\(M + Mr\\), \\(n\\)회 복용 직후 잔류량은 \\(S_n = M(1 + r + r^2 + \\dots + r^{n-1})\\) 임. 장기 복용 상태는 \\(n\\)을 무한대로 보내는 무한등비급수 \\[S = \\sum_{n=0}^{\\infty} M r^n\\] 으로 모델링됨. 공비 \\(r\\)이 \\(0<r<1\\) 이므로 수렴 조건에 의해 \\(S = \\frac{M}{1-r}\\) 이 됨. 따라서 환자의 체내 약물 최고 농도는 무한히 복용하더라도 이 한계선을 절대 넘지 않음을 논증함.", "math_extract": ["[개념 1] 등비수열의 합: 첫째항과 공비를 통해 \\(n\\)번째 복용 시점의 잔류량을 일반화하는 성질.", "[개념 2] 무한등비급수의 수렴 조건: 공비 \\(r\\)의 범위가 \\(-1 < r < 1\\) 일 때 급수가 수렴하는 조건 추출.", "[개념 3] 극한과 평형태: 생체 내 유입량과 배출량이 균형을 이루는 정상 상태(Steady State)를 극한값으로 매핑."]}, {"title": "세포 성장에 따른 부피 변화 대비 겉넓이 증가율 분석", "concept": "음함수의 미분법", "motivation": "생물학 교과에서 '세포가 일정 크기 이상으로 커지면 물질교환 효율이 떨어져 분열한다'는 내용을 배움. 이를 단순히 비례 관계가 아니라 부피 변화에 대한 겉넓이의 순간 변화율이라는 미분적 관점에서 수학적으로 엄밀히 분석하고자 탐구함.", "background": "구형 세포를 가정할 때, 반지름 \\(r\\)에 따른 부피 \\(V = \\frac{4}{3}\\pi r^3\\) 이고 겉넓이 \\(S = 4\\pi r^2\\) 임. 반지름 \\(r\\)을 소거하면 두 변수의 직접적인 관계식 \\(S^3 = 36\\pi V^2\\) 이 성립함.", "modeling": "\\(V\\)와 \\(S\\)의 관계식 \\(S^3 - 36\\pi V^2 = 0\\) 에서, \\(S\\)를 \\(V\\)에 대한 음함수로 보고 양변을 \\(V\\)에 대해 미분함: \\(3S^2 \\frac{dS}{dV} - 72\\pi V = 0\\). 이를 \\(\\frac{dS}{dV}\\)에 대해 정리하면 \\(\\frac{dS}{dV} = \\frac{72\\pi V}{3S^2} = \\frac{24\\pi V}{S^2}\\) 이 됨. 여기에 \\(V\\)와 \\(S\\)의 공식을 대입하면 \\[\\frac{dS}{dV} = \\frac{2}{r}\\] 이 됨. 즉, 세포의 반지름 \\(r\\)이 커질수록 부피 증가에 대한 겉넓이의 증가비율이 반비례하여 감소하므로 물질교환 효율이 저하됨을 미분으로 증명함.", "math_extract": ["[개념 1] 음함수의 미분법: \\(f(x, y) = 0\\) 꼴의 방정식에서 \\(y\\)를 \\(x\\)의 함수로 보고 각 항을 \\(x\\)에 대해 미분하는 성질.", "[개념 2] 합성함수의 미분법: \\(S^3\\)을 \\(V\\)에 대해 미분할 때 겉미분과 속미분(\\(\\frac{dS}{dV}\\))을 적용하는 원리.", "[개념 3] 도함수의 기하학적 의미: 한 변수의 변화에 따른 다른 변수의 순간적인 변화율 측정."]}], "물리생명계열": [{"title": "입체도형의 단면적 적분을 통한 혈관 내 혈류 수용량 계산", "concept": "정적분의 활용 (입체도형의 부피)", "motivation": "의학 장비(MRI, CT) 영상에서 혈관의 협착 상태를 진단할 때 특정 구간 혈관의 총 체적(부피)을 정확히 계산하는 것이 필수적임. 혈관의 단면이 위치에 따라 변할 때 이를 적분으로 다루는 원리를 탐구함.", "background": "혈관을 \\(x\\)축 방향의 원통형 입체로 모델링하고, 혈관 벽의 병변이나 수축으로 인해 \\(x\\) 위치에서의 단면의 반지름이 함수 \\(r(x)\\)로 다르게 나타나는 물리적 구조를 가정함.", "modeling": "혈관 중심축을 \\(x\\)축으로 잡고 구간 \\([a, b]\\)에서의 단면적을 \\(S(x)\\)라 하면, 단면이 원형이므로 \\(S(x) = \\pi [r(x)]^2\\) 임. 입체도형의 부피 정의에 의해 특정 혈관 구간의 총 부피 \\(V\\)는 \\[V = \\int_{a}^{b} S(x) dx = \\int_{a}^{b} \\pi [r(x)]^2 dx\\] 라는 정적분 식으로 모델링됨. \\(r(x)\\)가 다항함수나 삼각함수 형태로 주어질 때 이 적분을 수행하여 정확한 혈류 수용 체적을 계산함.", "math_extract": ["[개념 1] 정적분을 이용한 입체도형의 부피: 일정한 축에 수직인 평면으로 자른 단면의 넓이 \\(S(x)\\)를 적분하여 부피를 구하는 성질.", "[개념 2] 함수의 제곱의 적분: 합성함수 미분의 역연산이나 전개를 통한 다항·삼각함수 적분법.", "[개념 3] 연속함수의 성질: 단면적 \\(S(x)\\)가 구간 내에서 폐구간 연속일 때 적분 가능하다는 기본 정리."]}, {"title": "생물의 상대성장 공식(Allometry)의 지수 법칙 유도", "concept": "로그미분법", "motivation": "생명체의 몸집이 커질 때 뼈의 두께나 특정 장기의 무게는 몸무게와 같은 비율로 자라지 않음. 생물학의 '상대성장 법칙'인 지수 형태의 관계식이 어떻게 양변의 미분적 관계로부터 도출되는지 수학적으로 규명하고자 탐구함.", "background": "생물체의 전체 크기(체중)를 \\(X\\), 특정 장기의 크기를 \\(Y\\)라 할 때, 각 조직의 상대적 성장 속도(변화율/현재크기)의 비가 항상 일정 상수 \\(b\\)를 유지한다는 생물학적 전제를 바탕으로 함.", "modeling": "상대적 변화율의 관계식은 \\(\\frac{(1/Y)(dY/dt)}{(1/X)(dX/dt)} = b\\) 로 표현됨. 이를 정리하면 \\(\\frac{1}{Y} dY = b \\frac{1}{X} dX\\) 임. 이 구조를 쉽게 다루기 위해 관계식 \\(Y = a X^b\\) 의 양변에 자연로그를 취하면 \\[\\ln Y = \\ln a + b \\ln X\\] 가 됨. 양변을 \\(t\\)에 대해 미분(로그미분법 적용)하면 \\(\\frac{1}{Y}\\frac{dY}{dt} = b \\frac{1}{X}\\frac{dX}{dt}\\) 가 되어 초기 생물학적 상대성장 전제 법칙과 완벽히 일치함을 수학적으로 유도함.", "math_extract": ["[개념 1] 로그미분법: 복잡한 지수 꼴이나 곱셈 꼴의 함수를 미분할 때, 양변에 로그를 취한 후 미분하는 성질.", "[개념 2] 로그함수의 도함수: \\((\\ln f(x))' = \\frac{f'(x)}{f(x)}\\) 임을 이용하여 분수 형태의 변화율을 도출하는 공식.", "[개념 3] 음함수/합성함수 미분의 연쇄 법칙: 변수 \\(Y\\)와 \\(X\\)가 시간 \\(t\\)를 매개로 연결되어 있을 때의 미분 전개."]}, {"title": "눈의 수정체로 사물이 들어올 때의 미세 굴절각 근사 공식 분석", "concept": "삼각함수의 극한", "motivation": "안구의 구조에서 빛이 아주 미세한 각도로 수정체에 입사할 때, 복잡한 삼각함수 기반의 스넬 법칙이 어떻게 선형적인 간단한 공식으로 단순화되어 시각 신호 처리에 기여하는지 삼각함수의 극한을 통해 밝히고자 탐구함.", "background": "빛이 굴절률 \\(n_1\\)인 매질에서 \\(n_2\\)인 매질로 진행할 때 굴절 법칙인 \\(n_1 \\sin(\\theta_1) = n_2 \\sin(\\theta_2)\\) 가 성립함. 시축에 가까운 미세 각도 (\\(\\theta \\to 0\\)) 제약을 둠.", "modeling": "교과서에서 배운 삼각함수의 기본 극한 공식 \\[\\lim_{\\theta \\to 0} \\frac{\\sin(\\theta)}{\\theta} = 1\\] 을 활용함. 이 성질에 의해 각도 \\(\\theta\\)가 매우 작을 때 \\\\sin(\\theta) \\approx \\theta\\) 로 근사할 수 있음. 따라서 굴절 공식인 \\(n_1 \\sin(\\theta_1) = n_2 \\sin(\\theta_2)\\) 에 극한적 근사를 적용하면 \\(n_1 \\theta_1 \\approx n_2 \\theta_2\\) 라는 단순한 일차 방정식 모델이 도출됨.", "math_extract": ["[개념 1] 삼각함수의 극한: \\(\\lim_{x \\to 0} \\frac{\\sin(x)}{x} = 1\\) 의 수학적 증명 및 극한 성질.", "[개념 2] 함수의 근사(Linear Approximation): 극한값의 정의를 이용하여 복잡한 초월함수를 영근방에서 다항식으로 대체하는 개념.", "[개념 3] 호도법: 삼각함수의 극한 공식이 성립하기 위해 각도의 단위가 반드시 라디안(호도법)이어야 하는 수학적 당위성."]}, {"title": "도플러 효과를 이용한 혈류 속도 측정 센서의 변화율", "concept": "몫의 미분법 & 합성함수의 미분법", "motivation": "초음파를 이용해 혈관 속 피의 흐름 속도를 측정하는 도플러 혈류계의 원리를 배우던 중, 측정 센서의 각도 변화에 따라 주파수 측정값이 얼마나 민감하게 요동치는지 미분 변화율을 통해 최적의 측정 위치를 찾고자 탐구함.", "background": "혈류 속도 \\(v\\)로 움직이는 적혈구에 의해 반사되는 초음파 주파수 변이 공식은 \\[f(\\theta) = \\frac{f_0 v}{v - v_s \\cos(\\theta)}\\] 로 주어짐. (\\(\\theta\\): 초음파 빔과 혈관이 이루는 각도)", "modeling": "각도 \\(\\theta\\)의 변화에 따른 주파수 \\(f\\)의 순간 변화율을 구하기 위해 \\(f(\\theta)\\)를 \\(\\theta\\)에 대해 미분함. 분수 형태이므로 몫의 미분법과 분모의 합성함수 미분을 동시에 적용함. \\[f'(\\theta) = -\\frac{f_0 v (v_s \\sin(\\theta))}{(v - v_s \\cos(\\theta))^2}\\] 이 유도됨. 이 도함수 모델을 통해 \\(\\theta=0\\)(정면)일 때는 \\(\\sin 0 = 0\\)이 되어 오차가 최소화되고, 수직 부근에서는 변화율이 급격해져 측정 오차가 커짐을 수학적으로 증명함.", "math_extract": ["[개념 1] 몫의 미분법: 분수 형태의 함수 \\(\\frac{g(x)}{f(x)}\\)를 미분하는 공식 성질.", "[개념 2] 삼각함수의 도함수: \\(\\sin(x)\\)와 \\(\\cos(x)\\)의 미분 공식 유도 및 합성 구조 처리.", "[개념 3] 합성함수의 미분법(연쇄 법칙): 겉함수와 속함수가 결합된 형태를 차례로 미분하는 원리."]}], "물리지구과학계열": [{"title": "구분구적법을 통한 고도별 대기 질량의 총합 계산", "concept": "정적분과 급수의 관계 (구분구적법)", "motivation": "지구 대기권은 위로 올라갈수록 공기가 희박해짐. 무한히 얇은 대기층의 질량들을 모두 합하여 지구 전체를 둘러싼 대기의 총질량을 구하는 과정이 교과서의 구분구적법 및 정적분과 급수 관계식의 실제 구현체임을 깨닫고 탐구함.", "background": "해수면으로부터의 고도 \\(h\\)에 따른 대기 밀도 함수는 지수함수 형태로 감소하여 \\(\\rho(h) = \\rho_0 e^{-ah}\\) 로 모델링됨. 지구 반경에 비해 대기권 두께가 얇으므로 평면 층 구조로 가정함.", "modeling": "대기권을 두께 \\(\\Delta h\\)로 \\(n\\)개의 층으로 쪼갠 후, \\(i\\)번째 층의 질량은 밀도\\(\\times\\)부피 즉 \\(\\rho(h_i) S \\Delta h\\) 임. 이를 모두 더한 총합의 극한 \\(\\lim_{n \\to \\infty} \\sum_{i=1}^{n} \\rho(h_i) S \\Delta h\\) 를 수립함. 정적분과 급수의 관계 공식에 의해 이 무한급수는 정적분 식 \\[S \\int_{0}^{H} \\rho_0 e^{-ah} dh\\] 로 변환됨. 이 지수함수 정적 모델링을 계산하여 지구 전체의 대기 총 질량을 유한한 값으로 유도함.", "math_extract": ["[개념 1] 정적분과 급수의 관계: 무한급수 \\(\\lim \\sum f(x_k)\\Delta x\\)를 정적분 \\(\\int f(x)dx\\)로 바꾸어 연산하는 핵심 성질.", "[개념 2] 구분구적법: 도형의 넓이나 부피를 세분하여 근사값을 구한 후 극한을 취하는 적분의 기초 개념.", "[개념 3] 지수함수의 정적분: 무한대 고도까지의 적분 흐름에서 지수함수 \\(e^{-ax}\\)의 적분 및 극한 수렴 성질."]}, {"title": "지진파(감쇠진동)의 도함수를 이용한 지각의 최대 충격력 시점", "concept": "지수·삼각함수의 미분 (곱의 미분)", "motivation": "지진 발생 시 지각은 진동하며 시간이 지남에 따라 에너지가 감소함. 지진파 그래프에서 지각에 가해지는 변위가 가장 커지는 첫 번째 최고점(극대점)의 도달 시간을 수학적으로 예측하여 내진 설계에 활용하는 원리를 탐구함.", "background": "지진파의 진폭 변위 함수는 진동을 나타내는 삼각함수와 감쇠를 나타내는 지수함수의 곱인 \\(y(t) = e^{-bt} \\sin(\\omega t)\\) 형태로 모델링됨.", "modeling": "최대 변위가 발생하는 시점을 찾기 위해 변위 함수의 1계도함수 \\(y'(t) = 0\\) 이 되는 \\(t\\)를 구함. 곱의 미분법을 적용하면 \\[y'(t) = -b e^{-bt}\\sin(\\omega t) + \\omega e^{-bt}\\cos(\\omega t) = e^{-bt} [\\omega \\cos(\\omega t) - b \\sin(\\omega t)]\\] 임. 식 안의 대괄호가 0이 되어야 하므로, \\(\\tan(\\omega t) = \\frac{\\omega}{b}\\) 가 되는 첫 번째 양수 \\(t_{\\text{max}}\\)를 유도함. 이 지점에서 도함수의 부호가 (+)에서 (-)로 바뀌므로 극대이자 최대 충격 시점임을 미분으로 논증함.", "math_extract": ["[개념 1] 도함수를 이용한 함수의 극대·극소 판정: \\(f'(x)=0\\) 이고 좌우 부호가 변할 때 극값이 되는 성질.", "[개념 2] 곱의 미분법: 두 함수 \\(f(x)g(x)\\)의 곱을 미분할 때 \\(f'g + fg'\\)를 적용하는 공식.", "[개념 3] 초월함수의 미분과 삼각방정식: 지수함수와 삼각함수의 도함수를 결합하여 탄젠트 방정식으로 변형하는 연산 원리."]}, {"title": "탈출 속도 공식에서 거리가 무한대로 갈 때의 인력 극한", "concept": "함수의 극한과 수평점근선", "motivation": "우주선이 지구 중력을 완전히 뿌리치고 탈출하기 위한 최소 속도(탈출 속도) 공식의 구조를 분석하던 중, 중심체로부터의 거리가 무한히 멀어질 때 인력과 속도 변화의 수렴성을 함수의 극한적 관점에서 이해하고자 탐구함.", "background": "역학적 에너지 보존 법칙에 의해 지구 중심 거리 \\(r\\)에서의 로켓 속도 함수는 \\[v(r) = \\sqrt{\\frac{2GM}{r} + C}\\] 로 유도됨. (\\(G\\): 중력상수, \\(M\\): 지구질량)", "modeling": "우주선이 지구 중력권 밖(\\(r \\to \\infty\\))으로 무한히 멀어지는 상황을 함수의 극한 모델 \\(\\lim_{r \\to \\infty} v(r)\\) 로 설정함. 분수식 \\(\\frac{2GM}{r}\\) 에서 \\(r\\)이 무한대로 갈 때 극한값 0으로 수렴하므로, \\[\\lim_{r \\to \\infty} \\sqrt{\\frac{2GM}{r} + C} = \\sqrt{C}\\] 가 됨. 그래프 상에서 \\(r\\)축에 평행한 수평점근선 \\(y=\\sqrt{C}\\) 가 나타나는 기하학적 개형을 분석함.", "math_extract": ["[개념 1] 함수의 무한대에서의 극한: 변수가 무한히 커질 때 함수값의 수렴 및 발산을 판정하는 성질.", "[개념 2] 수평점근선의 정의: \\(\\lim_{x \\to \\infty} f(x) = L\\) 일 때 직선 \\(y = L\\) 이 곡선의 점근선이 되는 기하학적 성질.", "[개념 3] 무리함수의 극한 연산: 루트 기호 내부 분수식의 극한값을 분리하여 계산하는 극한의 성질."]}, {"title": "해안가 연안류를 따라 이동하는 표류물의 실제 궤적 길이", "concept": "정적분의 활용 (곡선의 길이)", "motivation": "해양 오염 문제 해결을 위해 바다에 버려진 쓰레기나 표류물이 연안 해류를 따라 이동한 실제 총 거리를 추적해야 함. 동역학적 물리 법칙으로 계산된 매개변수 궤적식으로부터 실제 적분 연산을 통해 총 길이를 도출하고자 탐구함.", "background": "해류의 주기적 순환과 일방향 흐름이 결합되어 시간 \\(t\\)에 따른 표류물의 위치가 매개변수 \\(x(t) = t + \\sin t\\), \\(y(t) = \\cos t\\) 라는 변형 곡선을 따르는 환경을 가정함.", "modeling": "시간 \\(t\\)에 따른 궤적의 미분 성분은 \\(\\frac{dx}{dt} = 1 + \\cos t\\), \\(\\frac{dy}{dt} = -\\sin t\\) 임. 곡선의 길이 공식 \\(L = \\int_{0}^{\\pi} \\sqrt{\\left(\\frac{dx}{dt}\right)^2 + \\left(\\frac{dy}{dt}\right)^2} dt\\) 에 대입함. 피적분함수 내부를 정리하면 \\(\\sqrt{(1+\\cos t)^2 + (-\\sin t)^2} = \\sqrt{2 + 2\\cos t}\\) 가 됨. 최종 정적분 모델 \\[L = \\int_{0}^{\\pi} \\sqrt{2 + 2\\cos t} dt\\] 를 수립하고 반각공식을 통해 이를 계산하여 표류물의 실제 이동 거리를 산출함.", "math_extract": ["[개념 1] 매개변수 함수의 미분법: \\(dx/dt, dy/dt\\)를 각각 구해 평면 운동의 속도 성분을 도출하는 성질.", "[개념 2] 곡선의 길이 공식: 평면 곡선이 매개변수로 주어졌을 때 속력을 정적분하는 수식 원리 추출.", "[개념 3] 삼각함수의 항등식과 적분: \\(\\sin^2 t + \\cos^2 t = 1\\) 성질을 이용해 근호 내부 식을 단순화하는 연산."]}], "화학지구과학계열": [{"title": "매년 유실되는 토양 속 특정 광물 성분의 장기 잔류량 수렴값", "concept": "수열의 극한과 점화식", "motivation": "토양의 화학적 풍화가 일어날 때, 매년 자연 현상으로 광물이 일정 비율 유실되는 동시에 대기 침적 등으로 일정량이 새로 공급됨. 수백 년의 세월이 흐른 뒤 토양의 성분 농도가 일정하게 유지되는 평형 현상을 수학적 수열의 극한으로 해결하고자 탐구함.", "background": "매년 기존 토양 광물량의 30%가 씻겨 나가고(70% 잔류), 환경적 요인으로 매년 새로운 광물량 \\(K\\)가 균일하게 유입되는 이산적 화학 순환계를 기반으로 함.", "modeling": "\\(n\\)년 후의 광물량을 \\(a_n\\)이라 하면, 관계식(점화식)은 \\(a_{n+1} = 0.7a_n + K\\) 로 모델링됨. 오랜 세월이 흘렀을 때의 변화를 보기 위해 양변에 수열의 극한 \\(\\lim_{n \\to \\infty}\\)을 취함. 수열이 수렴한다고 가정하여 \\(\\lim a_n = \\alpha\\) 라 두면, 극한 성질에 의해 \\[\\alpha = 0.7\\alpha + K\\] 가 성립함. 이를 풀면 \\(\\alpha = \\frac{K}{0.3} = \\frac{10}{3}K\\) 라는 최종 수렴값을 유도하여 장기 토양 조성을 예측함.", "math_extract": ["[개념 1] 수열의 극한의 기본 성질: 수열 \\(a_n\\)이 \\(\\alpha\\)에 수렴하면 \\(a_{n+1}\\) 역시 \\(\\alpha\\)에 수렴하는 성질 활용.", "[개념 2] 점화식과 극한의 연결: 귀납적으로 정의된 수열의 장기적인 거동을 극한을 통해 대수적으로 해결하는 원리.", "[개념 3] 수렴과 평형상태: 변동성이 지속되는 동적 시스템이 극한 환경에서 하나의 고정점으로 수렴함을 이해."]}, {"title": "지하수 내 우라늄 등 방사성 물질의 깊이별 누적 차단량", "concept": "치환적분법 (f(g(x))*g'(x) 꼴)", "motivation": "지하수층이나 지각 깊은 곳에 매장된 방사성 물질이 상층부로 확산될 때, 토양 지층 구조가 이를 흡수 및 차단하는 능력을 깊이에 따른 적분 함수로 모델링하여 수질 안전성을 평가하고자 탐구함.", "background": "지각 깊이 \\(x\\)에 따른 방사성 토양층의 흡수율 밀도가 다항식과 지수함수의 곱인 \\(f(x) = x e^{-x^2}\\) 형태의 분포를 띤다고 가정함.", "modeling": "특정 깊이 \\(h\\)까지의 지층이 흡수한 총 방사성 물질 차단량을 구하기 위해 정적분 모델 \\[\\text{Total} = \\int_{0}^{h} x e^{-x^2} dx\\] 를 수립함. 이 수식을 해결하기 위해 지수 위인 \\(-x^2\\) 을 변수 \\(t\\)로 치환하는 치환적분법을 적용함. 양변을 미분하면 \\(-2x dx = dt\\) 가 되므로, 식 안의 \\(x dx\\) 성분을 \\(-\\frac{1}{2} dt\\) 로 대체하여 정적분을 단순 계산함.", "math_extract": ["[개념 1] 치환적분법: 합성함수의 미분 원리를 거꾸로 이용하여 피적분함수의 일부를 새로운 변수 \\(t\\)로 바꾸어 적분하는 성질.", "[개념 2] 정적분의 변수 치환과 구간 변경: \\(x\\)의 구간 \\([0, h]\\)를 \\(t\\)의 구간 \\([0, -h^2]\\)으로 정확히 매핑하는 적분 성질 공식.", "[개념 3] 지수함수의 적분과 도함수: \\(e^x\\) 형태의 도함수 성질을 이용한 최종 부정적분 계산."]}, {"title": "지구 대기 흐름 모델에서 온실가스 농도 확산 누적치 분석", "concept": "부분적분법", "motivation": "대기 화학에서 온실가스가 고도 상승에 따른 기류 변화로 인해 특정 고도 구간에 집중되는 현상이 발생함. 고도별 비선형 농도 함수를 전체 적분하여 대기 기둥 내 온실가스 총량을 산정하는 수학적 방식을 규명하고자 탐구함.", "background": "고도 \\(x\\)에 따른 온실가스 연직 농도 분포가 대기 압력 감소와 확산 메커니즘의 결합으로 \\(C(x) = (x - 1) e^{-x}\\) 라는 형태로 모델링되는 대기역학 이론을 기반으로 함.", "modeling": "전체 대기 구간에서의 온실가스 총 누적량을 구하기 위해 \\[\\int_{1}^{H} (x - 1) e^{-x} dx\\] 라는 정적분 모델을 수립함. 다항함수 \\((x-1)\\)과 초월함수 \\(e^{-x}\\)의 곱이므로 부분적분법을 적용함. \\(u = x-1, v' = e^{-x}\\) 로 설정하면 \\(u' = 1, v = -e^{-x}\\) 가 됨. 부분적분 공식에 대입하면 \\([-(x-1)e^{-x}]_1^H - \\int_{1}^{H} -e^{-x} dx\\) 로 변형되어 최종 누적치를 도출함.", "math_extract": ["[개념 1] 부분적분법 공식: \\(\\int u(x)v'(x)dx = u(x)v(x) - \\int u'(x)v(x)dx\\) 성질을 이용한 초월함수 적분법.", "[개념 2] 다항함수와 지수함수의 곱의 적분: 미분하기 좋은 함수(다항)와 적분하기 좋은 함수(지수)를 설정하는 원리 추출.", "[개념 3] 정적분의 기본 정리: 부정적분을 구한 후 위끝과 아래끝을 대입하여 순 변화량을 계산하는 정리."]}, {"title": "편광현미경을 이용한 광물 결정의 빛 투과율 극한 분석", "concept": "삼각함수의 극한 식 변형", "motivation": "지질학실험에서 편광현미경으로 지각 광물 박편을 관찰할 때, 편광판의 회전각을 미세하게 조정함에 따라 빛의 투과 세기가 급격히 변함. 회전각이 0에 한없이 가까워질 때의 투과율 한계값을 삼각함수 극한으로 해석하고자 탐구함.", "background": "광물 결정의 복굴절 특성으로 인해 회전각 \\(\\theta\\)에 따른 빛의 강도 투과율식이 \\[T(\\theta) = \\frac{1 - \\cos(\\theta)}{\\theta^2}\\] 구조를 포함하는 광학 물리 법칙에 근거함.", "modeling": "각도가 미세하게 변할 때의 투과율 극한을 구하기 위해 \\(\\lim_{\\theta \\to 0} \\frac{1 - \\cos(\\theta)}{\\theta^2}\\) 모델을 설계함. 이 식의 분자, 분모에 \\((1 + \\cos(\\theta))\\)를 곱하는 식 변형을 수행함. 분자는 \\(1 - \\cos^2(\\theta) = \\sin^2(\\theta)\\) 가 됨. 따라서 식은 \\[\\lim_{\\theta \\to 0} \\left(\\frac{\\sin(\\theta)}{\\theta}\\right)^2 \\times \\frac{1}{1 + \\cos(\\theta)}\\] 로 분리되어 최종 극한값 \\(\\frac{1}{2}\\)을 얻어냄을 수학적으로 전개함.", "math_extract": ["[개념 1] 삼각함수의 극한: \\(\\lim_{x \\to 0} \\frac{\\sin(x)}{x} = 1\\) 이라는 기본 공식을 활용할 수 있도록 식을 유도하는 성질.", "[개념 2] 삼각함수의 관계와 항등식: \\(\\sin^2(x) + \\cos^2(x) = 1\\) 을 이용하여 \\(1-\\cos(x)\\) 구조를 사인으로 바꾸는 변형 공식.", "[개념 3] 극한의 대수적 성질: 수렴하는 두 함수의 곱의 극한은 각각의 극한값의 곱과 같다는 성질 추출."]}], "생명지구과학계열": [{"title": "기온 곡선과 강수량 곡선의 사잇면적을 통한 생태 기후 적합도 산출", "concept": "정적분의 활용 (두 곡선 사이의 넓이)", "motivation": "지구과학에서 기후 그래프를 볼 때 기온과 강수량의 균형이 생태계 유지에 매우 중요함. 두 기후 요소 함수가 서로 교차하며 만들어내는 폐구간의 면적을 정적분으로 계산하여 특정 생물의 생존 적합도를 수치화하고자 탐구함.", "background": "어느 위도 지역의 계절별 기온 함수 \\(f(x) = \\sin x + 15\\) 와 강수 지표 함수 \\(g(x) = \\cos x + 10\\) 이 삼각함수 주기로 변화하는 동적 기후 모델을 기반으로 함.", "modeling": "두 곡선이 만나는 교점 \\(f(x) = g(x)\\)의 해를 구해 적분 구간 \\([a, b]\\)를 설정함. 구간 내에서 두 기후 곡선으로 둘러싸인 면적을 구하기 위해 \\[\\text{Area} = \\int_{a}^{b} |f(x) - g(x)| dx\\] 라는 정적분의 활용 모델을 수립함. 절댓값을 벗기기 위해 구간별 대소 관계를 판정한 후, 삼각함수의 정적분 연산을 통해 정확한 사잇면적을 산출함.", "math_extract": ["[개념 1] 두 곡선 사이의 넓이: 구간 \\([a, b]\\)에서 두 함수 \\(f(x) \\ge g(x)\\) 일 때 사잇면적은 \\(\\int (f(x)-g(x))dx\\) 임을 이용하는 성질.", "[개념 2] 삼각함수의 정적분: \\(\\sin(x)\\)와 \\(\\cos(x)\\)의 부정적분 공식을 활용한 정적분 연산.", "[개념 3] 방정식의 해와 적분 구간: 두 초월함수의 교점 좌표를 찾아내어 정적분의 위끝과 아래끝으로 매핑하는 원리."]}, {"title": "먹이사슬 에너지 피라미드의 영양 단계별 총유효 에너지 합", "concept": "무한급수와 등비급수", "motivation": "생태계에서 영양 단계가 올라갈수록 호흡과 열 발산으로 인해 에너지가 90% 소실되고 10%만 전달됨. 만약 생태계 먹이사슬 단계가 무한히 이어진다고 가정할 때, 생태계 전체에서 순환하는 총 유효 에너지의 총합이 유한하게 통제되는지 급수로 증명하고자 탐구함.", "background": "생태계 생산자가 태양으로부터 확보한 최초 에너지를 \\(E\\)라 할 때, 1차 소비자는 \\(0.1E\\), 2차 소비자는 \\(0.1^2E\\) 형태로 에너지가 도식화되는 린데만의 10% 법칙을 기반으로 함.", "modeling": "생태계 전체 에너지의 총합은 \\(\\text{Total} = E + 0.1E + 0.1^2E + 0.1^3E + \\dots\\) 이라는 무한급수 모델로 표현됨. 이는 첫째항이 \\(E\\)이고 공비 \\(r\\)이 0.1인 무한등비급수 구조임. 공비 \\(r\\)이 \\(|r| < 1\\) 수렴 조건을 만족하므로, \\[S = \\frac{E}{1 - 0.1} = \\frac{10}{9}E\\] 로 수렴함을 수학적으로 논증함.", "math_extract": ["[개념 1] 무한급수의 정의: 수열의 무한한 항을 순서대로 더한 식의 수렴성을 부분합의 극한으로 정의하는 성질.", "[개념 2] 등비급수의 합 공식: 공비가 0.1이므로 \\(\\frac{1}{1-r}\\) 구조에 대입하여 상숫값 합을 찾아내는 공식.", "[개념 3] 수열의 귀납적 정의: 각 영양 단계의 에너지 양 \\(E_{n+1} = 0.1 E_n\\) 의 관계식 도출."]}, {"title": "지구 온난화로 인한 해수 온도 상승 속도의 가속/둔화 전환점", "concept": "이계도함수와 변곡점", "motivation": "지구 온난화 시나리오 예측에서 해수면 온도는 계속 상승하지만, 그 상승 '속도'가 가속되는 구간과 기후 대책 효과로 인해 둔화되는 구간의 경계가 존재함. 그래프의 볼록성이 변하는 지점을 이계도함수로 추적하고자 탐구함.", "background": "미래 해수 온도 변화 예측 그래프가 탄소 배출 시나리오와 해양 흡수 열량의 복합 작용으로 다항식과 로그함수가 합성된 \\(y(t) = t^2 - 8\\ln(t + 1)\\) 형태로 모델링된다고 가정함.", "modeling": "온도 변화의 가속도를 분석하기 위해 1계도함수 \\(y'(t) = 2t - \\frac{8}{t+1}\\) 을 구한 후, 한 번 더 미분하여 이계도함수 모델 \\[y''(t) = 2 - \\frac{8}{(t+1)^2}\\] 을 구함. 변곡점을 찾기 위해 \\(y''(t) = 0\\) 이 되는 시점을 구하면 \\((t+1)^2 = 4 \\implies t = 1\\)(년)을 도출함. 이 변곡점을 기점으로 가속에서 둔화(또는 반대)로 기후 변곡 시점이 형성됨을 수학적으로 증명함.", "math_extract": ["[개념 1] 이계도함수: 함수의 볼록성과 가속도 성질을 파악하기 위해 도함수를 한 번 더 미분하는 성질.", "[개념 2] 변곡점의 기하학적 판정: 이계도함수의 값이 0이 되고 그 점의 좌우에서 부호가 바뀌어 오목/볼록이 변하는 지점 추출.", "[개념 3] 로그함수 및 분수함수의 미분법: \\(\\ln(f(x))\\) 꼴의 합성함수 미분법 및 \\(f(x)^{-1}\\) 꼴의 미분 공식 적용."]}, {"title": "나이테 두께 변화 함수를 통한 나무의 총 나이 예측 모델", "concept": "치환적분법 (f'(x)/f(x) 꼴)", "motivation": "나무의 나이테는 과거 기후가 좋을 때 넓게 자라고 안 좋을 때 좁게 자람. 나이테 중심으로부터의 거리당 성장률 변화 수식을 바탕으로 역으로 적분을 실행하여 나무가 살아온 전체 세월을 역추적하는 수학적 모델을 구축하고자 탐구함.", "background": "중심 반지름 \\(r\\)에 따른 나무의 세포 성장 속도 비가 분수식 \\(f(r) = \\frac{2r}{r^2 + 4}\\) 구조를 따르는 생장 생태학적 이론을 기반으로 함.", "modeling": "나이테 전체 반지름 \\(R\\)까지 자라는 데 걸린 총 세월을 모델링하기 위해 정적분 \\[T = \\int_{0}^{R} \\frac{2r}{r^2 + 4} dr\\] 식을 세움. 분모인 \\(r^2 + 4\\) 를 \\(t\\)로 치환하면, \\(2r dr = dt\\) 가 되어 분자의 형태와 정확히 일치함. 즉, 이는 \\(\\frac{f'(r)}{f(r)}\\) 형태의 치환적분법임. 적분 결과 \\(\\ln|r^2 + 4|\\) 가 되며 위끝과 아래끝을 대입하여 \\[T = \\ln(R^2+4) - \\ln(4)\\] 라는 시간 유도 공식을 수립함.", "math_extract": ["[개념 1] \\(\\frac{f'(x)}{f(x)}\\) 꼴의 치환적분법: 분모를 미분한 결과가 분자에 있을 때 \\(\\ln|f(x)| + C\\) 로 적분되는 핵심 성질.", "[개념 2] 정적분의 치환적분 원리: 변수 치환에 따른 적분 기호 내부 식의 대수적 변환 원리 추출.", "[개념 3] 로그의 성질과 기본 연산: 적분 결과 도출된 자연로그 간의 뺄셈을 진수의 나눗셈으로 정리하는 성질."]}], "컴퓨터계열": [{"title": "AI 딥러닝 역전파 알고리즘의 다중 합성 활성화 함수 미분", "concept": "로그미분법 및 연쇄 법칙", "motivation": "인공지능 소프트웨어가 데이터를 학습할 때 '역전파(Backpropagation)'라는 미분 과정을 거침. 수만 개의 뉴런이 얽힌 합성함수를 컴퓨터가 오차 없이 빠르고 가볍게 미분해 내는 수학적 원리에 호기심이 생겨 탐구함.", "background": "인공신경망 가중치 최적화에서 출력 오차를 앞단으로 전파할 때, 뉴런의 활성화 함수들의 연속적인 곱셈·나눗셈 구조 연쇄 법칙을 바탕으로 함.", "modeling": "인공지능 뉴런의 다중 결합 출력 함수 구조가 \\[y = \\frac{x e^x}{1 + e^x}\\] 와 같이 복잡한 분수와 곱의 결합으로 주어질 때, 컴퓨터의 연산 부하를 줄이기 위해 양변에 자연로그를 취함: \\(\\ln y = \\ln x + x - \\ln(1 + e^x)\\). 양변을 \\(x\\)에 대해 미분(로그미분법)하면 \\(\\frac{y'}{y} = \\frac{1}{x} + 1 - \\frac{e^x}{1 + e^x}\\) 가 됨. 최종 도함수는 \\[y' = y \\left[ \\frac{1}{x} + 1 - \\frac{e^x}{1 + e^x} \\right]\\] 가 되므로, 컴퓨터가 개별 미분값을 쉽게 더하는 대수적 연산 모델로 변환됨을 증명함.", "math_extract": ["[개념 1] 로그미분법: 복잡한 곱셈과 나눗셈으로 얽힌 식을 로그의 성질을 이용해 덧셈과 뺄셈으로 쪼개어 미분하는 성질.", "[개념 2] 합성함수의 미분법(연쇄 법칙): \\(\\ln(1+e^x)\\)와 같이 여러 함수가 중첩된 구조를 바깥부터 안쪽까지 차례로 미분하는 원리.", "[개념 3] 도함수의 소프트웨어적 의미: 변화율(기울기)을 이용해 인공지능의 오차 가중치를 업데이트하는 경사하강법과의 연결."]}, {"title": "디지털 오디오 데이터 압축 및 음성 인식(푸리에 변환)의 핵심 연산", "concept": "부분적분법", "motivation": "스마트폰의 음성 인식 비서나 MP3 오디오 압축 기술은 소리 신호를 주파수 성분으로 분해하는 '푸리에 변환' 수학 공식을 사용함. 이 변환식의 뼈대를 이루는 미적분 연산 과정을 직접 손으로 전개해 보고자 탐구함.", "background": "시간 \\(t\\)에 따른 소리 신호의 진폭 데이터 다항식과 파동을 나타내는 삼각함수 신호가 곱해진 복합 신호 \\(f(t) = t \\cos(t)\\) 의 주파수 성분 추출 가정을 기반으로 함.", "modeling": "특정 주파수 성분량을 검출하는 푸리에 적분 모델의 핵심 꼴인 \\[\\int_{0}^{\\pi} t \\cos(t) dt\\] 를 수립함. 다항함수 \\(t\\)와 삼각함수 \\(\\cos(t)\\)의 곱이므로 부분적분법 공식 \\(\\int u v' dt = u v - \\int u' v dt\\) 를 적용함. \\(u = t, v' = \\cos(t)\\) 로 두면, \\(u' = 1, v = \\sin(t)\\) 가 됨. 공식에 대입하면 \\([t \\sin(t)]_0^{\\pi} - \\int_{0}^{\\pi} \\sin(t) dt\\) 가 되어, 최종 결과 \\[\\left[ t \\sin(t) + \\cos(t) \\right]_0^{\\pi}\\] 에 구간을 대입해 연산함. 이 적분 알고리즘이 소리 압축 소프트웨어의 기본 연산임을 밝힘.", "math_extract": ["[개념 1] 부분적분법: 다항함수와 삼각함수의 곱처럼 서로 다른 종류의 초월함수가 곱해진 식의 적분 성질 활용.", "[개념 2] 삼각함수의 부정적분: \\(\\cos(x)\\)의 적분은 \\(\\sin(x)\\)이고, \\(\\sin(x)\\)의 적분은 \\(-\\cos(x)\\)가 되는 적분 공식 추출.", "[개념 3] 주기함수의 정적분: 일정 구간 연속인 파동 함수를 정적분하여 신호의 총 에너지를 산출하는 개념."]}, {"title": "이미지 필터(포토샵 흐림/선명화)의 픽셀 경계선(Edge) 검출 알고리즘", "concept": "이계도함수와 변곡점", "motivation": "자율주행 자동차의 카메라가 도로 위의 사람이나 표지판을 인식하려면 이미지에서 '테두리'를 따내야 함. 컴퓨터가 사진 속 물체의 경계선을 인식하는 원리가 픽셀 밝기 함수 그래프의 변곡점을 찾는 미분 연산임을 알고 탐구함.", "background": "디지털 이미지의 1차원 픽셀 라인을 따라 가로축 위치 \\(x\\)에 따른 밝기를 함수 \\(f(x)\\)로 나타내면, 배경에서 사물로 넘어갈 때 명도가 급격히 변하는 전이 구간이 발생함.", "modeling": "사물의 경계선은 밝기의 변화율(1계도함수 \\(f'(x)\\))이 '최대'가 되는 지점임. 함수의 극대점을 찾기 위해 \\(f'(x)\\)를 한 번 더 미분한 이계도함수 모델 \\[f''(x) = 0\\] 이 되는 \\(x\\) 좌표를 컴퓨터 알고리즘이 계산하도록 설계함. 그래프의 오목과 볼록이 바뀌는 이 변곡점의 정확한 위치가 사진 속 사물의 선명한 외곽 테두리선이 됨을 수학적 기하학 개형으로 증명함.", "math_extract": ["[개념 1] 이계도함수와 극대·극소의 관계: \\(f'(x)\\)의 극대점을 찾기 위해 \\(f''(x)=0\\) 이 되는 성질을 활용.", "[개념 2] 변곡점의 수학적 성질: 그래프의 기울기가 증가에서 감소로 혹은 감소에서 증가로 꺾이는 임계점 추출.", "[개념 3] 연속변수와 이산 데이터의 미분: 연속함수의 미분 개념을 컴퓨터의 이산 픽셀 차분 연산으로 변환하는 개념 원리."]}, {"title": "3D 그래픽 랜더링 엔진의 입체 곡면 부피 연산", "concept": "정적분의 활용 (회전체의 부피)", "motivation": "3D 게임 그래픽 엔진이나 CAD 프로그램에서 곡면으로 이루어진 입체 캐릭터나 부품의 체적을 계산하고 충돌 처리를 연산할 때, 내부적으로 미적분 공식이 어떻게 코드로 구현되는지 원리를 분석하고자 탐구함.", "background": "2차원 곡선 모양을 특정 축을 중심으로 회전시켜 디자인하는 3D 입체 모델링의 회전체 체적 계산 기하학 원리를 기반으로 함.", "modeling": "곡선 \\(y = \\sqrt{\\ln(x)}\\) 와 \\(x\\)축, 그리고 두 직선 \\(x=1, x=e\\)로 둘러싸인 도형을 \\(x\\)축 중심으로 1회전시킨 3D 그래픽 모델을 구상함. 회전체 부피 공식 \\(V = \\pi \\int_{a}^{b} [f(x)]^2 dx\\) 에 함수를 대입하면 \\[V = \\pi \\int_{1}^{e} \\ln(x) dx\\] 라는 정적분 모델이 수립됨. \\(\\ln(x)\\)의 적분을 위해 부분적분법을 연계 수행하여 \\[V = \\pi [x \\ln(x) - x]_1^e = \\pi\\] 라는 정확한 그래픽 데이터 부피 크기를 계산해 냄.", "math_extract": ["[개념 1] 정적분을 이용한 회전체의 부피: 단면적 \\(S(x) = \\pi [f(x)]^2\\) 임을 이용하여 \\(x\\)축 회전체의 체적을 구하는 성질.", "[개념 2] 로그함수의 부정적분: \\(\\int \\ln(x) dx = x \\ln(x) - x + C\\) 가 도출되는 부분적분법의 특수 성질 활용.", "[개념 3] 정적분의 기본 정리와 대입 연산: 무리함수와 로그함수의 합성 구조 제곱을 통해 정적분 값을 최종 도출하는 정리."]}]};
+
+    const trackListContainer = document.getElementById('track-list');
+    const chatContainer = document.getElementById('chat-container');
+
+    Object.keys(chatbotData).forEach(track => {
+        const btn = document.createElement('button');
+        btn.className = 'track-btn';
+        btn.innerText = track;
+        btn.onclick = () => selectTrack(track, btn);
+        trackListContainer.appendChild(btn);
+    });
+
+    function selectTrack(trackName, btnElement) {
+        document.querySelectorAll('.track-btn').forEach(b => b.classList.remove('active'));
+        btnElement.classList.add('active');
+
+        const welcome = document.getElementById('welcome-message');
+        if (welcome) welcome.remove();
+
+        appendMessage('user', trackName + " 계열 주제 추천해 줘.");
+
+        setTimeout(() => {
+            const topics = chatbotData[trackName];
+            let htmlContent = `선택하신 <strong>[${trackName}]</strong> 계열의 미적분 탐구 주제 4가지입니다.<br>아래 주제 중 하나를 선택하시면 학교 보고서 제출 양식(동기, 배경이론, 수식 모델링, 교과 개념 추출)에 맞춘 상세 내용을 확인하실 수 있습니다.<br><br>`;
+            
+            htmlContent += `<div class="topic-grid">`;
+            topics.forEach((topic, idx) => {
+                htmlContent += `
+                    <div class="topic-card" onclick="selectTopic('${trackName}', ${idx})">
+                        <div class="title">${idx + 1}. ${topic.title}</div>
+                        <div class="badge">적용 개념: ${topic.concept}</div>
+                    </div>
+                `;
+            });
+            htmlContent += `</div>`;
+
+            appendMessage('bot', htmlContent);
+        }, 400);
+    }
+
+    function selectTopic(trackName, topicIdx) {
+        const topic = chatbotData[trackName][topicIdx];
+        appendMessage('user', `[주제 ${topicIdx + 1}] ${topic.title} 상세 보기`);
+
+        setTimeout(() => {
+            const uniqueId = 'report_' + Date.now();
+            let reportHtml = `
+                <strong>${topic.title}</strong>에 대한 미적분 탐구보고서 초안이 생성되었습니다. 교과서 평가 요소인 <strong>핵심 수식 모델링</strong>과 <strong>개념 추출(3가지 이상)</strong>이 포함되어 있으며, 모든 수식은 수식 편집기 양식으로 정밀 변환되었습니다.
+                
+                <div class="report-box" id="${uniqueId}">
+                    <div class="report-title">📝 미적분 탐구 보고서 (세특용 원본 텍스트)</div>
+                    
+                    <div class="report-section">
+                        <div class="report-section-title">1. 주제선정 동기</div>
+                        <div class="report-text">${topic.motivation}</div>
+                    </div>
+                    
+                    <div class="report-section">
+                        <div class="report-section-title">2. 전공 분야의 탐구 내용 및 배경 이론</div>
+                        <div class="report-text">${topic.background}</div>
+                    </div>
+                    
+                    <div class="report-section">
+                        <div class="report-section-title">3. 핵심 미적분 수식 및 모델링 (★평가 핵심)</div>
+                        <div class="report-text">${topic.modeling}</div>
+                    </div>
+                    
+                    <div class="report-section">
+                        <div class="report-section-title">4. 활용된 수학적 개념 추출 (최소 3가지 이상)</div>
+                        <div class="report-text">${topic.math_extract.join('<br>')}</div>
+                    </div>
+                    
+                    <button class="copy-btn" onclick="copyReportText('${uniqueId}')">📋 본문 텍스트 복사하기</button>
+                </div>
+            `;
+            appendMessage('bot', reportHtml);
+            
+            // MathJax에 새로운 수식이 추가되었음을 알리고 다시 렌더링하도록 명령
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                window.MathJax.typesetPromise();
+            }
+        }, 500);
+    }
+
+    function appendMessage(sender, content) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `message ${sender}`;
+        
+        const bubbleDiv = document.createElement('div');
+        bubbleDiv.className = 'bubble';
+        bubbleDiv.innerHTML = content;
+        
+        msgDiv.appendChild(bubbleDiv);
+        chatContainer.appendChild(msgDiv);
+        
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function copyReportText(containerId) {
+        const container = document.getElementById(containerId);
+        const sections = container.querySelectorAll('.report-section');
+        let textToCopy = "";
+        
+        sections.forEach(sec => {
+            const title = sec.querySelector('.report-section-title').innerText;
+            const text = sec.querySelector('.report-text').innerText;
+            textToCopy += title + '\n' + text + '\n\n';
+        });
+        
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            alert('탐구보고서 텍스트가 클립보드에 복사되었습니다. 한글(HWP)이나 Word 양식에 붙여넣어 사용하세요!');
+        }).catch(err => {
+            alert('복사에 실패했습니다. 직접 드래그하여 복사해 주세요.');
+        });
+    }
+</script>
+
+</body>
+</html>
